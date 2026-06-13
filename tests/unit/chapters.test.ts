@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { createStoryWithRootChapter, createChildChapter } from '@/lib/chapters';
+import { createUser } from '@/test/factories';
 
 describe('chapter invariants', () => {
   it('creates a root chapter and a child chapter under exactly one parent', async () => {
+    const author = await createUser();
+    const childAuthor = await createUser();
+
     const story = await createStoryWithRootChapter({
       title: 'The Forest Gate',
-      authorId: 'user_1',
+      authorId: author.id,
       chapterTitle: 'At the gate',
       content: [{ type: 'paragraph', children: [{ text: 'You stand before the gate.' }] }]
     });
@@ -13,7 +17,7 @@ describe('chapter invariants', () => {
     const child = await createChildChapter({
       storyId: story.id,
       parentChapterId: story.rootChapterId,
-      authorId: 'user_2',
+      authorId: childAuthor.id,
       title: 'Open the gate',
       content: [{ type: 'paragraph', children: [{ text: 'The gate opens.' }] }]
     });

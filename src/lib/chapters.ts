@@ -4,19 +4,6 @@ import { db } from '@/lib/db';
 
 type ChapterContent = Prisma.InputJsonValue;
 
-async function ensureUser(tx: Prisma.TransactionClient, userId: string) {
-  await tx.user.upsert({
-    where: { id: userId },
-    update: {},
-    create: {
-      id: userId,
-      email: `${userId}@example.com`,
-      displayName: userId,
-      passwordHash: 'test-password'
-    }
-  });
-}
-
 export async function createStoryWithRootChapter(input: {
   title: string;
   authorId: string;
@@ -24,8 +11,6 @@ export async function createStoryWithRootChapter(input: {
   content: ChapterContent;
 }) {
   return db.$transaction(async (tx) => {
-    await ensureUser(tx, input.authorId);
-
     const story = await tx.story.create({
       data: { title: input.title, authorId: input.authorId }
     });
@@ -55,17 +40,6 @@ export async function createChildChapter(input: {
   title: string;
   content: ChapterContent;
 }) {
-  await db.user.upsert({
-    where: { id: input.authorId },
-    update: {},
-    create: {
-      id: input.authorId,
-      email: `${input.authorId}@example.com`,
-      displayName: input.authorId,
-      passwordHash: 'test-password'
-    }
-  });
-
   const parent = await db.chapter.findUnique({ where: { id: input.parentChapterId } });
 
   if (!parent || parent.storyId !== input.storyId || parent.deletedAt) {
