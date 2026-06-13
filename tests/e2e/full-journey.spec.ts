@@ -3,7 +3,8 @@ import { createUser } from '@/test/factories';
 import { hashPassword } from '@/lib/passwords';
 
 test('admin can remove a reported chapter end-to-end', async ({ page }) => {
-  const stamp = Date.now();
+  // Date.now() alone collides across parallel workers; add randomness so emails stay unique.
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   // 1. Writer publishes a story and a child chapter.
   await page.goto('/auth/sign-up');

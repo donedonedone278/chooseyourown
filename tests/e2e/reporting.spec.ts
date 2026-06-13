@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 test('a signed-in reader can like a chapter and report it', async ({ page }) => {
-  const stamp = Date.now();
+  // Date.now() alone collides across parallel workers; add randomness so emails stay unique.
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Riley');
   await page.getByLabel('Email').fill(`riley-${stamp}@example.com`);

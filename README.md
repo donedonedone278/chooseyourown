@@ -29,7 +29,8 @@ are both required — see `.env.example`. `.env` and `*.db` are gitignored.
 ## Commands
 
 ```bash
-npm run dev             # Next.js dev server on :3000
+npm run dev             # Next.js dev server on :3000 (localhost only)
+npm run dev:phone       # dev server reachable from a phone on the LAN; prints the URL
 npm run build
 npm run lint            # next lint (eslint-config-next, core-web-vitals)
 npm run typecheck       # tsc --noEmit
@@ -38,6 +39,12 @@ npm run test:e2e        # Playwright: browser journeys (chromium)
 npm test                # full local gate: lint → typecheck → unit → e2e (fail-fast)
 npm run db:seed         # re-run the idempotent admin seed (prisma db seed)
 ```
+
+## Testing from a phone
+
+`npm run dev:phone` serves the app to other devices on your wifi and prints the URL to
+open. It relies on a one-time Windows port-forwarding setup (kept current by a logon
+task) — see `scripts/README.md`. Intended for a trusted home network over plain HTTP only.
 
 ## Architecture
 

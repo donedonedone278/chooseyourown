@@ -22,7 +22,8 @@ Implementation is in progress — through plan **Task 6**: app scaffold, Prisma 
 
 ```bash
 npm install            # also runs `prisma generate` via postinstall
-npm run dev            # Next.js dev server on :3000
+npm run dev            # Next.js dev server on :3000 (localhost only)
+npm run dev:phone      # dev server reachable from a phone on the LAN; prints the URL
 npm run build
 npm run lint           # next lint (eslint-config-next, core-web-vitals)
 npm run typecheck      # tsc --noEmit
@@ -43,6 +44,23 @@ Run a single Playwright spec:
 ```bash
 npx playwright test tests/e2e/home.spec.ts --project=chromium
 ```
+
+## Development loop (do this without being asked)
+
+After building **and** testing a user-facing feature (i.e. once `npm test` is green),
+make it pokeable from the user's phone and hand them the URL — this is the standing
+workflow, not something to wait for a reminder on:
+
+1. Run `npm run dev:phone` **in the background** (it binds `0.0.0.0` and prints the
+   `http://<LAN-IP>:3000` phone URL). One already-running instance is fine — don't stack
+   duplicates; reuse it.
+2. Tell the user the phone URL and a one-line "what to try" for the feature you just built.
+
+`npm run dev:phone` is the only command needed; LAN port-forwarding (WSL2 → Windows → wifi)
+is kept current by a Windows logon task. See `scripts/README.md` for the full setup and
+the one-time `scripts/windows/wsl-port-forward-setup.ps1` (elevated) if forwarding is ever
+missing. Don't put multi-step `&&` command chains in docs — add a script under `scripts/`
+(and an npm alias) instead, the way `dev:phone` and `npm test` already are.
 
 ## Architecture
 
@@ -79,7 +97,7 @@ Three test tiers — keep each one in its lane:
 - **Client-component tests** opt into jsdom with a `// @vitest-environment jsdom` docblock on the first line and use `@testing-library/react` (`render`/`screen`). `@testing-library/jest-dom` matchers are registered globally via `src/test/setup-dom.ts`.
 - **Playwright** (`playwright.config.ts`): chromium only, baseURL `http://127.0.0.1:3000`, auto-starts `npm run dev` and reuses an existing server. The plan treats browser coverage as first-class — new user-facing features should land with an e2e spec.
 - **Scope e2e queries to a landmark region** (`page.locator('header' | 'main' | 'nav').getByRole(...)`) rather than querying the whole page. This is the standing convention — it makes assertions intention-revealing and avoids strict-mode collisions when the same accessible name legitimately appears in nav and page content. Don't give two interactive elements the same accessible name *and* destination; differentiate the copy instead (e.g. nav "Start a story" vs homepage hero "Write the first chapter").
-- E2e tests that create rows in the shared dev db must use unique inputs per run (e.g. `avery-${Date.now()}@example.com`) so they stay repeatable; there is no per-test db reset for the browser suite yet.
+- E2e tests that create rows in the shared dev db must use unique inputs per run so they stay repeatable (there is no per-test db reset for the browser suite yet). `Date.now()` **alone is not enough** — Playwright runs spec files in parallel workers, so two specs sharing an email prefix can collide on the same millisecond. Add randomness: ``const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;`` then `` `riley-${stamp}@example.com` ``.
 - The plan is strictly **test-first**: write the failing test, confirm it fails, implement, confirm it passes, then commit. Follow that rhythm when continuing the plan.
 
 ## Environment
