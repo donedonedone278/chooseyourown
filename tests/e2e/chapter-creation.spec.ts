@@ -15,17 +15,36 @@ test('signed-in user starts a story and adds a child chapter', async ({ page }) 
   await page.goto('/stories/new');
   await page.getByLabel('Story title').fill('The Clocktower');
   await page.getByLabel('Chapter title').fill('The bell rings');
-  await page.getByLabel('Chapter content').fill('The bell rings at **midnight**.');
+
+  // Type plain text, then bold it via the toolbar (WYSIWYG — no typed
+  // Markdown syntax).
+  const rootEditor = page.getByLabel('Chapter content');
+  await rootEditor.fill('The bell rings at midnight.');
+  await rootEditor.getByText('The bell rings at midnight.').click();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Shift+End');
+  await page.getByRole('button', { name: 'Bold' }).click();
+  await expect(page.getByRole('button', { name: 'Bold' })).toHaveAttribute('aria-pressed', 'true');
+
   await page.getByRole('button', { name: 'Publish first chapter' }).click();
 
   // Lands on the chapter reader.
   await expect(page.getByRole('heading', { name: 'The bell rings' })).toBeVisible();
   await expect(page.locator('main').getByText('The bell rings at midnight.')).toBeVisible();
+  await expect(page.locator('main').locator('strong')).toHaveText('The bell rings at midnight.');
 
   // Add a child chapter under it.
   await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
   await page.getByLabel('Chapter title').fill('Climb the stairs');
-  await page.getByLabel('Chapter content').fill('You climb the *creaking* stairs.');
+
+  const childEditor = page.getByLabel('Chapter content');
+  await childEditor.fill('You climb the creaking stairs.');
+  await childEditor.getByText('You climb the creaking stairs.').click();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Shift+End');
+  await page.getByRole('button', { name: 'Italic' }).click();
+  await expect(page.getByRole('button', { name: 'Italic' })).toHaveAttribute('aria-pressed', 'true');
+
   await page.getByRole('button', { name: 'Publish chapter' }).click();
 
   // Back on the parent reader, the new chapter shows up as a choice.
@@ -33,4 +52,9 @@ test('signed-in user starts a story and adds a child chapter', async ({ page }) 
   await expect(
     page.locator('main').getByRole('link', { name: 'Climb the stairs' })
   ).toBeVisible();
+
+  // The child chapter's content rendered with italics, as applied via the toolbar.
+  await page.locator('main').getByRole('link', { name: 'Climb the stairs' }).click();
+  await expect(page.getByRole('heading', { name: 'Climb the stairs' })).toBeVisible();
+  await expect(page.locator('main').locator('em')).toHaveText('You climb the creaking stairs.');
 });
