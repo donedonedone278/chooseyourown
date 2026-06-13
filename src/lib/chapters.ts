@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { db } from '@/lib/db';
 
 export async function createStoryWithRootChapter(input: {
@@ -62,6 +64,7 @@ export async function getChapterWithChoices(chapterId: string) {
     where: { id: chapterId, deletedAt: null },
     include: {
       story: true,
+      _count: { select: { likes: true } },
       childChapters: {
         where: { deletedAt: null },
         orderBy: { createdAt: 'asc' },
@@ -69,4 +72,30 @@ export async function getChapterWithChoices(chapterId: string) {
       }
     }
   });
+}
+
+export async function likeChapter(input: { chapterId: string; userId: string }) {
+  try {
+    return await db.chapterLike.create({ data: input });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new Error('already liked');
+    }
+    throw error;
+  }
+}
+
+export async function reportChapter(input: {
+  chapterId: string;
+  userId: string;
+  reason: string;
+}) {
+  return db.chapterReport.create({ data: input });
+}
+
+export async function hasUserLikedChapter(chapterId: string, userId: string) {
+  const like = await db.chapterLike.findUnique({
+    where: { chapterId_userId: { chapterId, userId } }
+  });
+  return like !== null;
 }

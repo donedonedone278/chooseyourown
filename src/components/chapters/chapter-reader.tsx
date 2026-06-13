@@ -1,6 +1,8 @@
 import Link from 'next/link';
 
+import { likeChapterAction } from '@/actions/chapter-actions';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
+import { ReportChapter } from '@/components/chapters/report-chapter';
 
 type Choice = { id: string; title: string; likeCount: number };
 
@@ -10,7 +12,10 @@ export function ChapterReader({
   title,
   content,
   storyTitle,
-  choices
+  choices,
+  likeCount,
+  viewerHasLiked,
+  isSignedIn
 }: {
   storyId: string;
   chapterId: string;
@@ -18,6 +23,9 @@ export function ChapterReader({
   content: string;
   storyTitle: string;
   choices: Choice[];
+  likeCount: number;
+  viewerHasLiked: boolean;
+  isSignedIn: boolean;
 }) {
   return (
     <main>
@@ -26,6 +34,22 @@ export function ChapterReader({
       </p>
       <h1>{title}</h1>
       <MarkdownContent markdown={content} />
+
+      <section aria-label="Reactions">
+        <p>
+          Liked by {likeCount} {likeCount === 1 ? 'reader' : 'readers'}
+        </p>
+        {isSignedIn ? (
+          <form action={likeChapterAction.bind(null, chapterId, storyId)}>
+            <button type="submit" disabled={viewerHasLiked}>
+              {viewerHasLiked ? 'Liked' : 'Like'}
+            </button>
+          </form>
+        ) : (
+          <Link href="/auth/sign-in">Sign in to like</Link>
+        )}
+        {isSignedIn ? <ReportChapter chapterId={chapterId} /> : null}
+      </section>
 
       <section aria-label="Choices">
         <h2>Choices</h2>

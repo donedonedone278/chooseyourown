@@ -11,7 +11,10 @@ export async function SiteHeader() {
       <nav>
         <Link href="/stories/new">Start a story</Link>
         {session?.user ? (
-          <span>Signed in as {session.user.name}</span>
+          <>
+            <span>Signed in as {session.user.name}</span>
+            {session.user.isAdmin ? <Link href="/admin/reports">Reports</Link> : null}
+          </>
         ) : (
           <Link href="/auth/sign-in">Sign in</Link>
         )}
