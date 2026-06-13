@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '@prisma/client';
 
 import { db } from '@/lib/db';
 
@@ -54,7 +53,7 @@ export async function createChapter(overrides: {
   storyId: string;
   authorId: string;
   title?: string;
-  contentJson?: Prisma.InputJsonValue;
+  content?: string;
   parentChapterId?: string | null;
 }) {
   await db.user.upsert({
@@ -73,7 +72,7 @@ export async function createChapter(overrides: {
       storyId: overrides.storyId,
       authorId: overrides.authorId,
       title: overrides.title ?? `Chapter ${uniqueSuffix()}`,
-      contentJson: overrides.contentJson ?? [{ type: 'paragraph', children: [{ text: 'Test content' }] }],
+      content: overrides.content ?? 'Test content.',
       parentChapterId: overrides.parentChapterId ?? null
     }
   });

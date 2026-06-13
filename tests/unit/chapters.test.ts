@@ -11,7 +11,7 @@ describe('chapter invariants', () => {
       title: 'The Forest Gate',
       authorId: author.id,
       chapterTitle: 'At the gate',
-      content: [{ type: 'paragraph', children: [{ text: 'You stand before the gate.' }] }]
+      content: 'You stand before the gate.'
     });
 
     const child = await createChildChapter({
@@ -19,7 +19,7 @@ describe('chapter invariants', () => {
       parentChapterId: story.rootChapterId,
       authorId: childAuthor.id,
       title: 'Open the gate',
-      content: [{ type: 'paragraph', children: [{ text: 'The gate opens.' }] }]
+      content: 'The gate opens.'
     });
 
     expect(child.parentChapterId).toBe(story.rootChapterId);

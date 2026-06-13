@@ -1,14 +1,10 @@
-import { Prisma } from '@prisma/client';
-
 import { db } from '@/lib/db';
-
-type ChapterContent = Prisma.InputJsonValue;
 
 export async function createStoryWithRootChapter(input: {
   title: string;
   authorId: string;
   chapterTitle: string;
-  content: ChapterContent;
+  content: string;
 }) {
   return db.$transaction(async (tx) => {
     const story = await tx.story.create({
@@ -20,7 +16,7 @@ export async function createStoryWithRootChapter(input: {
         storyId: story.id,
         authorId: input.authorId,
         title: input.chapterTitle,
-        contentJson: input.content
+        content: input.content
       }
     });
 
@@ -38,7 +34,7 @@ export async function createChildChapter(input: {
   parentChapterId: string;
   authorId: string;
   title: string;
-  content: ChapterContent;
+  content: string;
 }) {
   const parent = await db.chapter.findUnique({ where: { id: input.parentChapterId } });
 
@@ -52,7 +48,7 @@ export async function createChildChapter(input: {
       parentChapterId: input.parentChapterId,
       authorId: input.authorId,
       title: input.title,
-      contentJson: input.content
+      content: input.content
     }
   });
 }
