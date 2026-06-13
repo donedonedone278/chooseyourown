@@ -1,0 +1,54 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.inner {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-family: var(--font-serif);
+  font-size: var(--step-2);
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.brand:hover {
+  color: var(--accent);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+}
+
+.nav a {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nav a:hover {
+  color: var(--accent);
+}
+
+.signedIn {
+  color: var(--text-muted);
+}

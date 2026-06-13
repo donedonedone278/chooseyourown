@@ -1,4 +1,5 @@
 import { ChapterEditor } from '@/components/editor/chapter-editor';
+import styles from './chapter-form.module.css';
 
 // Shared form for both starting a story (includeStoryTitle) and adding a child
 // chapter. The `action` is a server action that reads `storyTitle`, `title`,
@@ -13,7 +14,7 @@ export function ChapterForm({
   includeStoryTitle?: boolean;
 }) {
   return (
-    <form action={action}>
+    <form action={action} className={styles.form}>
       {includeStoryTitle ? (
         <label>
           Story title
@@ -25,7 +26,9 @@ export function ChapterForm({
         <input name="title" type="text" required />
       </label>
       <ChapterEditor />
-      <button type="submit">{submitLabel}</button>
+      <button type="submit" className={`btn btn--primary ${styles.submit}`}>
+        {submitLabel}
+      </button>
     </form>
   );
 }

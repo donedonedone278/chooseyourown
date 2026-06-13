@@ -1,0 +1,115 @@
+.article {
+  max-width: var(--measure);
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.breadcrumb {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.body {
+  font-size: var(--step-1);
+}
+
+.body p {
+  margin-top: var(--space-3);
+}
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-muted);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.likeCount {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.likeButton {
+  border-color: var(--like);
+  color: var(--like);
+}
+
+.likeButton:hover:not(:disabled) {
+  background: var(--like);
+  color: var(--accent-contrast);
+}
+
+.likeButton:disabled {
+  background: var(--like);
+  color: var(--accent-contrast);
+  border-color: var(--like);
+  opacity: 0.85;
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.choiceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.choiceCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-3) var(--space-4);
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.choiceCard:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.choiceTitle {
+  font-size: var(--step-1);
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.choiceTitle:hover {
+  color: var(--accent);
+}
+
+.choiceLikes {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--text-muted);
+}
+
+.addChapter {
+  align-self: flex-start;
+}
