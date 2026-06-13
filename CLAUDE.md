@@ -14,6 +14,8 @@ Authoritative scope and design live in `docs/superpowers/`:
 
 Active development happens on the **`develop`** branch; `main` holds the design docs and is the eventual integration target. Commit feature work to `develop`.
 
+**Standing authorization:** commit and push to `develop` regularly without asking first — checkpoint working increments as you go (ideally with `npm test` green). Still ask before anything that rewrites shared history (force-push, rebase of pushed commits) or touches `main`.
+
 Implementation is in progress — roughly through plan Task 2: app scaffold, Prisma data model, chapter domain helpers, and the Vitest DB harness. Later tasks (auth, rich-text validation, writing flow, reader/feed, likes/reports/admin) are planned but **not yet built** — do not assume Auth.js, Tiptap, Zod, or bcryptjs exist until they appear in `package.json`.
 
 ## Commands
@@ -23,9 +25,13 @@ npm install            # also runs `prisma generate` via postinstall
 npm run dev            # Next.js dev server on :3000
 npm run build
 npm run lint           # next lint (eslint-config-next, core-web-vitals)
+npm run typecheck      # tsc --noEmit
 npm run test:unit      # Vitest: domain/unit tests
 npm run test:e2e       # Playwright: browser journeys (chromium)
+npm test               # full local gate: lint → typecheck → unit → e2e (fail-fast)
 ```
+
+`npm test` is the single pre-commit gate. Run it before committing; each stage is also runnable standalone (above).
 
 Run a single unit test file / name:
 ```bash
@@ -65,4 +71,14 @@ npx playwright test tests/e2e/home.spec.ts --project=chromium
 
 ## Environment
 
-`DATABASE_URL` is required (SQLite, e.g. `file:./dev.db`); tests default it to `file:./test.db`. Auth (planned) will add `AUTH_SECRET`.
+Development runs on **WSL2** (Linux subsystem on a Windows host). Keep the repo on the Linux filesystem (`/home/...`, where it currently lives) rather than under `/mnt/c/...` — that's what keeps `npm install`, file watching, and HMR fast. The dev server binds `127.0.0.1:3000`; WSL2's localhost forwarding makes that reachable from the Windows browser. Playwright runs headless Chromium (works out of the box); *headed* mode would need an X server / WSLg.
+
+`DATABASE_URL` is required (SQLite, e.g. `file:./dev.db`); tests default it to `file:./test.db`. Auth (planned) will add `AUTH_SECRET`. `.env` and `*.db` are gitignored.
+
+First-time local setup (these artifacts don't live in git, so a fresh clone needs them):
+```bash
+npm install
+printf 'DATABASE_URL="file:./dev.db"\n' > .env
+npx prisma db push                 # create the dev SQLite db from the schema
+npx playwright install chromium    # browser for the e2e stage of `npm test`
+```

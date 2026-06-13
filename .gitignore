@@ -5,3 +5,5 @@ test-results/
 next-dev.log
 prisma/*.db
 prisma/**/*.db
+.env
+.env*.local
