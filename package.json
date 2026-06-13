@@ -10,7 +10,11 @@
     "postinstall": "prisma generate",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "test": "npm run lint && npm run typecheck && npm run test:unit && npm run test:e2e"
+    "test": "npm run lint && npm run typecheck && npm run test:unit && npm run test:e2e",
+    "db:seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",
@@ -36,6 +40,7 @@
     "eslint-config-next": "^15.3.3",
     "jsdom": "^29.1.1",
     "prisma": "^6.11.1",
+    "tsx": "^4.22.4",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
   },

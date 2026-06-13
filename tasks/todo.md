@@ -1,367 +1,159 @@
-# Task 7 — Likes, reports, and the minimal admin surface
+# Task 8 — Full-journey e2e, seed data, docs, and local setup
 
-> Rewritten from `docs/superpowers/plans/2026-06-12-choose-your-own-adventure.md` (Task 7)
-> to match the **actual** project: Markdown content (not JSON), **server actions**
-> (not `fetch` to API route handlers), the existing `requireUser`/`requireAdminUser`
-> helpers, and the existing factories. Work strictly **test-first**: write the failing
-> test, run it red, implement, run it green, then commit.
+> Rewritten from `docs/superpowers/plans/2026-06-12-choose-your-own-adventure.md` (Task 8)
+> to match the **actual** project: no Prisma migrations (schema is synced via
+> `prisma db push`), Markdown chapter content, server actions, and the
+> like/report/admin surfaces landed in Task 7 (commit `eb9c7a3`). Work test-first
+> where the plan calls for it; run `npm test` before committing.
 
 ## Context
 
-The reader already shows like *counts* on child-chapter choices, but there is no way to
-like a chapter, no way to report one, and no admin surface to act on reports. The schema
-already has everything we need — `ChapterLike` (`@@unique([chapterId, userId])`),
-`ChapterReport` (`reason`, `resolvedAt`, `removedAt`), and `User.isAdmin`. This task wires
-up the behavior: per-user likes (one per user, idempotent), post-hoc reporting, and a
-simple admin page that soft-deletes reported chapters. Publication stays immediate;
-moderation is after-the-fact only.
+Tasks 1–7 are done: scaffold, data model, auth, content validation, writing flow,
+reader + feed, and likes/reports/admin removal. What's left per the master plan and
+`CLAUDE.md`'s "Still to build" note is the wrap-up: a true end-to-end journey test that
+exercises the whole loop *including* admin moderation (Task 7 explicitly deferred this —
+sign-up only creates non-admin users, so there was previously no way to reach
+`/admin/reports` in a browser test), plus the local-setup artifacts a fresh clone needs:
+`.env.example`, `README.md`, and `prisma/seed.ts`.
 
 ## Design decisions (read before coding)
 
-1. **Server actions, not API routes.** The original plan used `POST /api/chapters/[id]/like`
-   + client `fetch`. Every mutation in this repo is a **server action** read from a
-   `<form action={...}>` (`createStory`, `createChildChapterAction`, `signUp`). Follow that
-   pattern — do **not** add files under `src/app/api/chapters/`.
+1. **No Prisma migrations.** The original plan's Step 4 ran `npx prisma migrate dev`.
+   This project has no `prisma/migrations/` directory — schema sync is `npx prisma db push`
+   (see `src/test/global-setup.ts` and `CLAUDE.md`'s first-time setup). README and any
+   commands here use `db push`, not `migrate dev`.
 
-2. **Admin protection lives in the page, not middleware.** The plan listed `src/middleware.ts`
-   using `auth(...)`. Skip it. `src/lib/auth.ts` imports Prisma + bcrypt, so importing it from
-   edge middleware breaks the bundle. We already have `requireAdminUser()` which redirects
-   non-admins; call it at the top of the admin page (server component). This is the simpler,
-   build-safe guard and matches how `requireUser()` already gates writing.
+2. **Seed admin via `tsx`.** `prisma/seed.ts` will be TypeScript (to reuse
+   `hashPassword` from `src/lib/passwords.ts` and `db` from `src/lib/db.ts`, keeping
+   hashing logic in one place). Prisma's seed runner needs a TS executor — add `tsx` as a
+   devDependency and wire `"prisma": { "seed": "tsx prisma/seed.ts" }` in `package.json`.
+   Document `npx prisma db seed` in the README. The seed is **idempotent**
+   (`db.user.upsert` on email) so it's safe to re-run.
 
-3. **Likes are idempotent at the action layer.** `likeChapter()` (lib) throws `'already liked'`
-   on the `P2002` duplicate — the unit test asserts this. The *action* catches that and treats
-   it as a no-op success, so a double-click never shows the user an error. The reader renders a
-   disabled "Liked" state when the viewer has already liked (no unlike in scope).
+3. **Admin e2e via in-test seeding (per your answer).** `tests/e2e/full-journey.spec.ts`
+   creates its own admin user directly in the dev db using `createUser` (from
+   `src/test/factories.ts`) + `hashPassword` (from `src/lib/passwords.ts`), with a
+   per-run-unique email so repeat runs don't collide — same "unique inputs per run"
+   convention as the other specs. This is self-contained and doesn't depend on
+   `prisma/seed.ts` having been run. Import via the `@/*` path alias, consistent with the
+   rest of the app — Playwright 1.54 resolves `tsconfig.json` `paths` automatically; if
+   that turns out not to work, fall back to relative imports
+   (`../../src/test/factories`, `../../src/lib/passwords`).
 
-4. **Distinct accessible names.** Choices already render `"N likes"` inside `<main>`. The current
-   chapter's own like control must use different copy (e.g. button "Like" / "Liked", count text
-   "Liked by N readers") to avoid Playwright strict-mode collisions — per the repo's e2e convention.
+4. **One comprehensive spec, not a near-duplicate of Task 5/6's tests.**
+   `chapter-creation.spec.ts` and `reading.spec.ts` already cover "sign up → start story →
+   add child chapter → appears in feed/reader with like counts". Re-asserting that exact
+   path in `full-journey.spec.ts` would be redundant. Instead, `full-journey.spec.ts`
+   covers the **moderation loop** that nothing else tests: publish → another user reports
+   it → admin sees it in `/admin/reports` → admin removes it → it disappears from the
+   reader's choice list and the homepage feed. This directly closes the gap Task 7 called
+   out and matches the design spec's "admins can review reports and remove content later".
 
-5. **Admin removal is split for testability.** Put the transactional removal/dismiss logic in
-   `src/lib/reports.ts` (pure, no auth → unit-testable in the node tier). The admin-gated
-   *actions* in `src/actions/report-actions.ts` just call `requireAdminUser()` then delegate.
-   (Node-tier unit tests must not import `auth.ts`/next-auth — keep the logic in the lib.)
+5. **`playwright.config.ts`**: no change needed. The existing `webServer` + baseURL config
+   already supports a longer spec; use `test.setTimeout(...)` inside the spec file itself
+   if the multi-account flow needs more than the default timeout, rather than a global
+   config change.
 
 ---
 
-## Step 1 — Domain layer: likes & reports (`src/lib/chapters.ts`, `src/lib/reports.ts`)
+## Step 1 — `.env.example`
 
-### 1a. Failing unit test — `tests/unit/likes.test.ts`
-```ts
-import { describe, expect, it } from 'vitest';
-import { likeChapter } from '@/lib/chapters';
-import { createUser, createStory, createChapter } from '@/test/factories';
-
-describe('likeChapter', () => {
-  it('allows one like per user per chapter and rejects duplicates', async () => {
-    const user = await createUser();
-    const story = await createStory({ authorId: user.id });
-    const chapter = await createChapter({ storyId: story.id, authorId: user.id });
-
-    const like = await likeChapter({ chapterId: chapter.id, userId: user.id });
-    expect(like.chapterId).toBe(chapter.id);
-
-    await expect(likeChapter({ chapterId: chapter.id, userId: user.id })).rejects.toThrow(
-      'already liked'
-    );
-  });
-});
+Create at repo root:
+```env
+DATABASE_URL="file:./dev.db"
+AUTH_SECRET="replace-with-a-long-random-string"
 ```
+Matches the two env vars `CLAUDE.md` documents as required (`DATABASE_URL`, `AUTH_SECRET`).
 
-### 1b. Failing unit test — `tests/unit/reports.test.ts`
-```ts
-import { describe, expect, it } from 'vitest';
-import { reportChapter, getChapterWithChoices } from '@/lib/chapters';
-import { listOpenReports, removeReportedChapter } from '@/lib/reports';
-import { createUser, createStory, createChapter } from '@/test/factories';
+---
 
-describe('reports', () => {
-  it('records a report, lists it as open, and removing it soft-deletes the chapter', async () => {
-    const user = await createUser();
-    const story = await createStory({ authorId: user.id });
-    const chapter = await createChapter({ storyId: story.id, authorId: user.id });
+## Step 2 — `prisma/seed.ts` + wiring
 
-    const report = await reportChapter({
-      chapterId: chapter.id,
-      userId: user.id,
-      reason: 'Spam content'
-    });
+### 2a. Add `tsx` and configure the seed runner
+In `package.json`:
+- add `"tsx": "^4"` to `devDependencies` (run `npm install -D tsx`)
+- add a top-level `"prisma": { "seed": "tsx prisma/seed.ts" }` block
+- add a convenience script: `"db:seed": "prisma db seed"`
 
-    const open = await listOpenReports();
-    expect(open.map((r) => r.id)).toContain(report.id);
-
-    await removeReportedChapter(report.id);
-
-    // Chapter is hidden from reader queries…
-    expect(await getChapterWithChoices(chapter.id)).toBeNull();
-    // …and the report no longer counts as open.
-    const stillOpen = await listOpenReports();
-    expect(stillOpen.map((r) => r.id)).not.toContain(report.id);
-  });
-});
-```
-
-Run red: `npm run test:unit -- tests/unit/likes.test.ts tests/unit/reports.test.ts`
-
-### 1c. Implement in `src/lib/chapters.ts`
-Add the `Prisma` import and two helpers. Extend `getChapterWithChoices` to also return the
-current chapter's own like count.
-```ts
-import { Prisma } from '@prisma/client';
-// ...existing imports/db...
-
-export async function likeChapter(input: { chapterId: string; userId: string }) {
-  try {
-    return await db.chapterLike.create({ data: input });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new Error('already liked');
-    }
-    throw error;
-  }
-}
-
-export async function reportChapter(input: {
-  chapterId: string;
-  userId: string;
-  reason: string;
-}) {
-  return db.chapterReport.create({ data: input });
-}
-
-export async function hasUserLikedChapter(chapterId: string, userId: string) {
-  const like = await db.chapterLike.findUnique({
-    where: { chapterId_userId: { chapterId, userId } } // composite @@unique
-  });
-  return like !== null;
-}
-```
-In `getChapterWithChoices`, add `_count: { select: { likes: true } }` to the **top-level**
-`include` (the `childChapters` already have it) so the reader can show the current chapter's count.
-
-### 1d. Implement `src/lib/reports.ts` (new)
+### 2b. `prisma/seed.ts`
 ```ts
 import { db } from '@/lib/db';
+import { hashPassword } from '@/lib/passwords';
 
-/** Reports awaiting admin action (neither resolved nor removed), oldest first. */
-export function listOpenReports() {
-  return db.chapterReport.findMany({
-    where: { removedAt: null, resolvedAt: null },
-    include: { chapter: true, user: true },
-    orderBy: { createdAt: 'asc' }
+async function main() {
+  const passwordHash = await hashPassword('password123');
+
+  await db.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: {},
+    create: {
+      email: 'admin@example.com',
+      displayName: 'Admin',
+      passwordHash,
+      isAdmin: true
+    }
   });
 }
 
-/** Admin removal: soft-delete the reported chapter and close the report. */
-export async function removeReportedChapter(reportId: string) {
-  return db.$transaction(async (tx) => {
-    const report = await tx.chapterReport.findUniqueOrThrow({ where: { id: reportId } });
-    await tx.chapter.update({
-      where: { id: report.chapterId },
-      data: { deletedAt: new Date() }
-    });
-    await tx.chapterReport.update({
-      where: { id: reportId },
-      data: { removedAt: new Date(), resolvedAt: new Date() }
-    });
+main()
+  .then(() => db.$disconnect())
+  .catch(async (error) => {
+    console.error(error);
+    await db.$disconnect();
+    process.exit(1);
   });
-}
-
-/** Dismiss a report without removing the chapter. */
-export function dismissReport(reportId: string) {
-  return db.chapterReport.update({
-    where: { id: reportId },
-    data: { resolvedAt: new Date() }
-  });
-}
 ```
-Run green: `npm run test:unit -- tests/unit/likes.test.ts tests/unit/reports.test.ts`
+> Verify `tsx` resolves the `@/*` path alias when invoked via `prisma db seed` (it reads
+> `tsconfig.json` by default). If it doesn't, switch the imports to relative paths
+> (`../src/lib/db`, `../src/lib/passwords`) — keep whichever actually runs.
+
+### 2c. Manual check
+```bash
+npx prisma db seed
+```
+Expect it to complete without error and upsert `admin@example.com` (`isAdmin: true`,
+password `password123`) into `dev.db`.
 
 ---
 
-## Step 2 — Server actions (`src/actions/chapter-actions.ts`, `src/actions/report-actions.ts`)
+## Step 3 — Full-journey e2e test (`tests/e2e/full-journey.spec.ts`, new)
 
-### 2a. Reader-facing actions — extend `src/actions/chapter-actions.ts`
-```ts
-import { revalidatePath } from 'next/cache';
-import { likeChapter, reportChapter } from '@/lib/chapters';
-// ...existing 'use server', requireUser imports...
+Follow existing spec conventions: scope queries to `header`/`main`/`nav`, unique emails
+via `Date.now()`, `getByLabel`/`getByRole`. Reuse the create-story / add-chapter steps
+from `chapter-creation.spec.ts` only as setup (not as the thing under test).
 
-export async function likeChapterAction(chapterId: string, storyId: string) {
-  const session = await requireUser();
-  try {
-    await likeChapter({ chapterId, userId: session.user.id });
-  } catch (error) {
-    // One-like-per-user: a repeat click is a harmless no-op, not an error.
-    if (!(error instanceof Error) || error.message !== 'already liked') throw error;
-  }
-  revalidatePath(`/stories/${storyId}/chapters/${chapterId}`);
-}
-
-type ReportState = { status: 'idle' | 'submitted' };
-
-export async function reportChapterAction(
-  _prev: ReportState,
-  formData: FormData
-): Promise<ReportState> {
-  const session = await requireUser();
-  const chapterId = String(formData.get('chapterId') ?? '');
-  const reason = String(formData.get('reason') ?? '').trim();
-  if (!chapterId || !reason) throw new Error('A reason is required to report a chapter.');
-
-  await reportChapter({ chapterId, userId: session.user.id, reason });
-  return { status: 'submitted' };
-}
-```
-`likeChapterAction` is bound with `chapterId`/`storyId` in the reader form.
-`reportChapterAction` uses the React 19 `useActionState` signature (`(prevState, formData)`),
-with `chapterId` carried as a hidden input.
-
-### 2b. Admin actions — `src/actions/report-actions.ts` (new)
-```ts
-'use server';
-
-import { redirect } from 'next/navigation';
-import { requireAdminUser } from '@/lib/auth';
-import { removeReportedChapter, dismissReport } from '@/lib/reports';
-
-export async function removeReportedChapterAction(reportId: string) {
-  await requireAdminUser();
-  await removeReportedChapter(reportId);
-  redirect('/admin/reports');
-}
-
-export async function dismissReportAction(reportId: string) {
-  await requireAdminUser();
-  await dismissReport(reportId);
-  redirect('/admin/reports');
-}
-```
-
----
-
-## Step 3 — Reader UI: like control + report form
-
-### 3a. Report widget — `src/components/chapters/report-chapter.tsx` (new, client)
-```tsx
-'use client';
-
-import { useActionState } from 'react';
-import { reportChapterAction } from '@/actions/chapter-actions';
-
-export function ReportChapter({ chapterId }: { chapterId: string }) {
-  const [state, formAction] = useActionState(reportChapterAction, { status: 'idle' as const });
-
-  if (state.status === 'submitted') return <p>Report submitted</p>;
-
-  return (
-    <details>
-      <summary>Report chapter</summary>
-      <form action={formAction}>
-        <input type="hidden" name="chapterId" value={chapterId} />
-        <label>
-          Reason
-          <textarea name="reason" required rows={3} />
-        </label>
-        <button type="submit">Submit report</button>
-      </form>
-    </details>
-  );
-}
-```
-> `<summary>Report chapter</summary>` is exposed to Playwright's `getByRole('button', { name: 'Report chapter' })`. Confirm during the green run; if the role lookup misses, switch the toggle to a real `<button>` + `useState`.
-
-### 3b. Update `src/components/chapters/chapter-reader.tsx`
-Add props `likeCount: number`, `viewerHasLiked: boolean`, `isSignedIn: boolean`, and render,
-after `<MarkdownContent />` and before the Choices section:
-```tsx
-<section aria-label="Reactions">
-  <p>Liked by {likeCount} {likeCount === 1 ? 'reader' : 'readers'}</p>
-  {isSignedIn ? (
-    <form action={likeChapterAction.bind(null, chapterId, storyId)}>
-      <button type="submit" disabled={viewerHasLiked}>
-        {viewerHasLiked ? 'Liked' : 'Like'}
-      </button>
-    </form>
-  ) : (
-    <Link href="/auth/sign-in">Sign in to like</Link>
-  )}
-  {isSignedIn ? <ReportChapter chapterId={chapterId} /> : null}
-</section>
-```
-Import `likeChapterAction` from `@/actions/chapter-actions` and `ReportChapter` from the new
-component. Keep the existing Choices copy (`"N likes"`) unchanged — distinct from "Liked by N readers".
-
-### 3c. Update the reader page `src/app/stories/[storyId]/chapters/[chapterId]/page.tsx`
-```tsx
-import { auth } from '@/lib/auth';
-import { getChapterWithChoices, hasUserLikedChapter } from '@/lib/chapters';
-// ...
-const session = await auth();
-const userId = session?.user?.id;
-const viewerHasLiked = userId ? await hasUserLikedChapter(chapter.id, userId) : false;
-// pass to <ChapterReader />:
-//   likeCount={chapter._count.likes}
-//   viewerHasLiked={viewerHasLiked}
-//   isSignedIn={Boolean(userId)}
-```
-
----
-
-## Step 4 — Admin reports page (`src/app/admin/reports/page.tsx`, new)
-
-```tsx
-import { requireAdminUser } from '@/lib/auth';
-import { listOpenReports } from '@/lib/reports';
-import { removeReportedChapterAction, dismissReportAction } from '@/actions/report-actions';
-
-export default async function ReportsPage() {
-  await requireAdminUser(); // redirects non-admins home / signed-out to sign-in
-  const reports = await listOpenReports();
-
-  return (
-    <main>
-      <h1>Open reports</h1>
-      {reports.length === 0 ? (
-        <p>No open reports.</p>
-      ) : (
-        <ul>
-          {reports.map((report) => (
-            <li key={report.id}>
-              <h2>{report.chapter.title}</h2>
-              <p>{report.reason}</p>
-              <p>Reported by {report.user.displayName}</p>
-              <form action={removeReportedChapterAction.bind(null, report.id)}>
-                <button type="submit">Remove chapter</button>
-              </form>
-              <form action={dismissReportAction.bind(null, report.id)}>
-                <button type="submit">Dismiss</button>
-              </form>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
-  );
-}
-```
-Add an admin nav link in `src/components/layout/site-header.tsx` (inside the signed-in branch):
-```tsx
-{session.user.isAdmin ? <Link href="/admin/reports">Reports</Link> : null}
-```
-
----
-
-## Step 5 — E2e: like + report (`tests/e2e/reporting.spec.ts`, new)
-
-Follow the existing spec style: sign up (writing/liking are auth-gated), publish a story,
-scope assertions to a landmark, use a `Date.now()` stamp for unique inputs.
 ```ts
 import { expect, test } from '@playwright/test';
+import { createUser } from '@/test/factories';
+import { hashPassword } from '@/lib/passwords';
 
-test('a signed-in reader can like a chapter and report it', async ({ page }) => {
+test('admin can remove a reported chapter end-to-end', async ({ page }) => {
   const stamp = Date.now();
+
+  // 1. Writer publishes a story and a child chapter.
+  await page.goto('/auth/sign-up');
+  await page.getByLabel('Display name').fill('Casey');
+  await page.getByLabel('Email').fill(`casey-${stamp}@example.com`);
+  await page.getByLabel('Password').fill('password123');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('Signed in as Casey')).toBeVisible();
+
+  await page.goto('/stories/new');
+  await page.getByLabel('Story title').fill(`Reported Story ${stamp}`);
+  await page.getByLabel('Chapter title').fill(`Root ${stamp}`);
+  await page.getByLabel('Chapter content').fill('The root chapter.');
+  await page.getByRole('button', { name: 'Publish first chapter' }).click();
+
+  await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  const childTitle = `Flagged Chapter ${stamp}`;
+  await page.getByLabel('Chapter title').fill(childTitle);
+  await page.getByLabel('Chapter content').fill('Content that gets reported.');
+  await page.getByRole('button', { name: 'Publish chapter' }).click();
+  await page.locator('main').getByRole('link', { name: childTitle }).click();
+  await expect(page.getByRole('heading', { name: childTitle })).toBeVisible();
+  const chapterUrl = page.url();
+
+  // 2. A second signed-in reader reports it.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Riley');
   await page.getByLabel('Email').fill(`riley-${stamp}@example.com`);
@@ -369,46 +161,91 @@ test('a signed-in reader can like a chapter and report it', async ({ page }) => 
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByText('Signed in as Riley')).toBeVisible();
 
-  await page.goto('/stories/new');
-  await page.getByLabel('Story title').fill(`Likeable ${stamp}`);
-  await page.getByLabel('Chapter title').fill(`Chapter ${stamp}`);
-  await page.getByLabel('Chapter content').fill('A chapter worth reacting to.');
-  await page.getByRole('button', { name: 'Publish first chapter' }).click();
-  await expect(page.getByRole('heading', { name: `Chapter ${stamp}` })).toBeVisible();
-
-  // Like → count goes 0 → 1 and the button reads "Liked".
-  await expect(page.locator('main').getByText('Liked by 0 readers')).toBeVisible();
-  await page.locator('main').getByRole('button', { name: 'Like' }).click();
-  await expect(page.locator('main').getByText('Liked by 1 reader')).toBeVisible();
-  await expect(page.locator('main').getByRole('button', { name: 'Liked' })).toBeDisabled();
-
-  // Report → confirmation message.
+  await page.goto(chapterUrl);
   await page.getByRole('button', { name: 'Report chapter' }).click();
-  await page.getByLabel('Reason').fill('Spam content');
+  await page.getByLabel('Reason').fill('Inappropriate content');
   await page.getByRole('button', { name: 'Submit report' }).click();
   await expect(page.getByText('Report submitted')).toBeVisible();
+
+  // 3. An admin signs in, sees the report, and removes the chapter.
+  const adminEmail = `admin-${stamp}@example.com`;
+  await createUser({
+    email: adminEmail,
+    displayName: 'Moderator',
+    passwordHash: await hashPassword('password123'),
+    isAdmin: true
+  });
+
+  await page.goto('/auth/sign-in');
+  await page.getByLabel('Email').fill(adminEmail);
+  await page.getByLabel('Password').fill('password123');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByText('Signed in as Moderator')).toBeVisible();
+
+  await page.locator('nav').getByRole('link', { name: 'Reports' }).click();
+  await expect(page.getByRole('heading', { name: 'Open reports' })).toBeVisible();
+  await expect(page.locator('main').getByRole('heading', { name: childTitle })).toBeVisible();
+
+  await page
+    .locator('main')
+    .getByRole('listitem')
+    .filter({ hasText: childTitle })
+    .getByRole('button', { name: 'Remove chapter' })
+    .click();
+
+  // 4. The removed chapter is gone from the open-reports list, the parent's
+  //    choices, and the homepage feed.
+  await expect(page.getByRole('heading', { name: 'Open reports' })).toBeVisible();
+  await expect(page.locator('main').getByRole('heading', { name: childTitle })).toHaveCount(0);
+
+  await page.goto('/');
+  await expect(page.locator('main').getByRole('link', { name: childTitle })).toHaveCount(0);
 });
 ```
-> Admin removal e2e is **deferred to Task 8**, which seeds an admin account — sign-up only
-> creates non-admin users, so there's no way to log in as an admin in the browser yet. The
-> removal/dismiss logic is covered by `tests/unit/reports.test.ts` (Step 1b).
+
+Notes while implementing:
+- Confirm the exact accessible names from Task 7's implementation: the admin page's
+  "Remove chapter" button, the `Reports` nav link text, and `Open reports` heading —
+  check `src/app/admin/reports/page.tsx` and `src/components/layout/site-header.tsx`
+  (written in commit `eb9c7a3`) and adjust selectors if they differ from the snippet above.
+- After removal, the chapter is soft-deleted (`deletedAt` set) — `getChapterWithChoices`
+  and the feed query both filter `deletedAt: null`, so it should vanish from both without
+  extra work. If the parent reader page is still showing a stale choice list, that's a
+  `revalidatePath`/redirect gap worth checking in `removeReportedChapterAction`.
+
+Run: `npx playwright test tests/e2e/full-journey.spec.ts --project=chromium` until green.
 
 ---
 
-## Step 6 — Full gate + commit
+## Step 4 — `README.md` (new)
+
+Cover, in this order, mirroring `CLAUDE.md` so the two stay consistent:
+1. One-paragraph description (from `CLAUDE.md`'s "What this repo is").
+2. **Local setup** — Volta install, `npm install`, `.env` creation (point at
+   `.env.example`), `npx prisma db push`, `npx prisma db seed` (seeded admin login:
+   `admin@example.com` / `password123`), `npx playwright install chromium`.
+3. **Commands** — `npm run dev`, `npm run build`, `npm run lint`, `npm run typecheck`,
+   `npm run test:unit`, `npm run test:e2e`, `npm test`.
+4. **Architecture** — brief: Next.js App Router + Prisma/SQLite, Markdown chapter
+   content (`src/lib/rich-text.ts`), server actions for writes, soft-deletion for
+   moderation.
+5. **Testing tiers** — the node/jsdom/Playwright split from `CLAUDE.md`.
+
+Keep it short — this is an entry point that links to `CLAUDE.md` / `docs/superpowers/`
+for depth, not a duplicate of them.
+
+---
+
+## Step 5 — Full gate + commit
 
 ```bash
 npm test   # lint → typecheck → unit → e2e (fail-fast)
 ```
 If green:
 ```bash
-git add src/lib/chapters.ts src/lib/reports.ts \
-        src/actions/chapter-actions.ts src/actions/report-actions.ts \
-        src/components/chapters/report-chapter.tsx src/components/chapters/chapter-reader.tsx \
-        src/app/stories/[storyId]/chapters/[chapterId]/page.tsx \
-        src/app/admin/reports/page.tsx src/components/layout/site-header.tsx \
-        tests/unit/likes.test.ts tests/unit/reports.test.ts tests/e2e/reporting.spec.ts
-git commit -m "feat: add chapter likes, reporting, and admin removal"
+git add .env.example README.md prisma/seed.ts package.json package-lock.json \
+        tests/e2e/full-journey.spec.ts
+git commit -m "feat: add full-journey e2e coverage, seed data, and local setup docs"
 git push   # standing authorization for develop
 ```
 
@@ -417,56 +254,41 @@ git push   # standing authorization for develop
 ## File checklist
 
 **New**
-- [ ] `src/lib/reports.ts`
-- [ ] `src/actions/report-actions.ts`
-- [ ] `src/components/chapters/report-chapter.tsx`
-- [ ] `src/app/admin/reports/page.tsx`
-- [ ] `tests/unit/likes.test.ts`
-- [ ] `tests/unit/reports.test.ts`
-- [ ] `tests/e2e/reporting.spec.ts`
+- [ ] `.env.example`
+- [ ] `README.md`
+- [ ] `prisma/seed.ts`
+- [ ] `tests/e2e/full-journey.spec.ts`
 
 **Modified**
-- [ ] `src/lib/chapters.ts` — `likeChapter`, `reportChapter`, `hasUserLikedChapter`, top-level `_count.likes`
-- [ ] `src/actions/chapter-actions.ts` — `likeChapterAction`, `reportChapterAction`
-- [ ] `src/components/chapters/chapter-reader.tsx` — reactions section
-- [ ] `src/app/stories/[storyId]/chapters/[chapterId]/page.tsx` — session + like state props
-- [ ] `src/components/layout/site-header.tsx` — admin Reports link
+- [ ] `package.json` — `tsx` devDependency, `prisma.seed` config, `db:seed` script
 
-**Deliberately NOT created** (divergence from original plan, see Design decisions)
-- `src/app/api/chapters/[chapterId]/like/route.ts`, `.../report/route.ts` — using server actions instead
-- `src/middleware.ts` — admin guarded in-page via `requireAdminUser()`
+**Deliberately unchanged** (divergence from original plan, see Design decisions)
+- `playwright.config.ts` — no change needed
+- No `prisma/migrations/` — `db push` stays the schema-sync mechanism
 
 ## Review (fill in after implementation)
 
-Implemented exactly per plan, with one deliberate deviation:
+All steps implemented exactly per the plan, no deviations needed:
 
-- `src/lib/chapters.ts`: added `likeChapter`, `reportChapter`, `hasUserLikedChapter`, and
-  extended `getChapterWithChoices` with a top-level `_count.likes` include.
-- `src/lib/reports.ts` (new): `listOpenReports`, `removeReportedChapter` (transactional
-  soft-delete + report close), `dismissReport`.
-- `src/actions/chapter-actions.ts`: added `likeChapterAction` (idempotent no-op on
-  `'already liked'`) and `reportChapterAction` (React 19 `useActionState` signature).
-- `src/actions/report-actions.ts` (new): `removeReportedChapterAction`,
-  `dismissReportAction`, both gated by `requireAdminUser()`.
-- `src/components/chapters/report-chapter.tsx` (new, client): report widget.
-- `src/components/chapters/chapter-reader.tsx`: new "Reactions" section with
-  "Liked by N reader(s)" text, Like/Liked button (or sign-in link when signed out), and
-  the report widget for signed-in viewers.
-- `src/app/stories/[storyId]/chapters/[chapterId]/page.tsx`: reads the session and
-  `hasUserLikedChapter`, passes `likeCount`/`viewerHasLiked`/`isSignedIn` to the reader.
-- `src/app/admin/reports/page.tsx` (new): lists open reports with Remove/Dismiss forms,
-  gated by `requireAdminUser()`.
-- `src/components/layout/site-header.tsx`: added a "Reports" nav link for admins.
-- Tests: `tests/unit/likes.test.ts`, `tests/unit/reports.test.ts` (both written red,
-  confirmed failing, then made green), and `tests/e2e/reporting.spec.ts`.
-
-**Deviation from plan:** for `report-chapter.tsx`, the plan flagged a risk that
-`<details><summary>Report chapter</summary></details>` might not expose an accessible
-`button` role to Playwright. Rather than try the `<summary>` first and fall back, I went
-straight to the plan's suggested fallback — a real `<button type="button">` toggled via
-`useState` that swaps to the report `<form>` when clicked. This is simpler, unambiguously
-accessible, and avoids a wasted red/green cycle. Behaviorally identical to the spec'd
-e2e flow; the e2e test passed on the first run.
-
-All other files match the plan exactly. `npm test` (lint → typecheck → unit → e2e) is
-green: 11 unit tests, 5 e2e tests, all passing.
+- **`.env.example`**: created with `DATABASE_URL` and `AUTH_SECRET` placeholders as specified.
+- **`prisma/seed.ts`**: written using the `@/*` path alias as in the plan's primary
+  option — `tsx prisma/seed.ts` resolved `@/lib/db` and `@/lib/passwords` correctly via
+  `tsconfig.json` paths, so no fallback to relative imports was needed. Wired
+  `"prisma": { "seed": "tsx prisma/seed.ts" }` and `"db:seed": "prisma db seed"` into
+  `package.json`; `tsx` (^4.22.4) added as a devDependency via `npm install -D tsx`.
+  `npx prisma db seed` runs cleanly and idempotently (verified by running it twice,
+  upserting `admin@example.com` / `password123`, `isAdmin: true`). Prisma emits a
+  deprecation warning about `package.json#prisma` config moving to `prisma.config.ts`
+  in Prisma 7 — informational only, not a failure, left as-is.
+- **`tests/e2e/full-journey.spec.ts`**: written verbatim from the plan's snippet. Cross-checked
+  selectors against `src/app/admin/reports/page.tsx` (heading "Open reports", per-report
+  `<h2>` with chapter title, "Remove chapter" / "Dismiss" buttons inside `<li>`s) and
+  `src/components/layout/site-header.tsx` ("Reports" nav link for admins, "Signed in as
+  {name}" text) — all matched the plan's assumptions exactly, so no selector adjustments
+  were required. Used the `@/test/factories` and `@/lib/passwords` imports as-is; both
+  resolved fine under Playwright 1.54. Test passed on the first run.
+- **`README.md`**: written per the outline — description, local setup (Volta, `.env`,
+  `db push`, `db seed`, Playwright browser install), commands, architecture, and the
+  testing-tiers table — pointing to `CLAUDE.md` / `docs/superpowers/` for depth.
+- **Full gate**: `npm test` (lint → typecheck → unit (5 files, 11 tests) → e2e (6 specs,
+  including the new full-journey spec)) passed completely green.
