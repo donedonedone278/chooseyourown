@@ -34,6 +34,9 @@ plan: chapter content is **Markdown** (not Tiptap/JSON), and **Volta** pins Node
 3. **Have Sonnet implement the plan** (subagent), strictly test-first, until `npm test` is green.
 4. **Get the user's approval** of the result.
 5. **Only then merge to `develop` and push `develop`** (`git checkout develop && git merge --no-ff <branch>` then push).
+6. **Reset `tasks/todo.md` after the merge** — clear the finished plan + Review back to the
+   empty working-slot placeholder so stale notes don't leak into the next cycle. `tasks/todo.md`
+   holds only the *current* feature's plan; `tasks/lessons.md` is the durable record.
 
 **Authorization:** commit freely *on the feature branch* to checkpoint progress without
 asking. **Do not merge into `develop` without explicit user approval.** Always ask before
