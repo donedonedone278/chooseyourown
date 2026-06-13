@@ -1,11 +1,7 @@
-import Link from 'next/link';
+import { RecentChapterFeed } from '@/components/feed/recent-chapter-feed';
+import { listRecentChapters } from '@/lib/stories';
 
-export default function HomePage() {
-  return (
-    <main>
-      <h1>Recent chapters</h1>
-      <p>See what readers and writers have added most recently.</p>
-      <Link href="/stories/new">Write the first chapter</Link>
-    </main>
-  );
+export default async function HomePage() {
+  const chapters = await listRecentChapters();
+  return <RecentChapterFeed chapters={chapters} />;
 }

@@ -1,7 +1,6 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { MarkdownContent } from '@/components/chapters/markdown-content';
+import { ChapterReader } from '@/components/chapters/chapter-reader';
 import { getChapterWithChoices } from '@/lib/chapters';
 
 export default async function ChapterPage({
@@ -17,28 +16,17 @@ export default async function ChapterPage({
   }
 
   return (
-    <main>
-      <p>
-        From <Link href={`/stories/${storyId}`}>{chapter.story.title}</Link>
-      </p>
-      <h1>{chapter.title}</h1>
-      <MarkdownContent markdown={chapter.content} />
-
-      <section aria-label="Choices">
-        <h2>Choices</h2>
-        {chapter.childChapters.length === 0 ? (
-          <p>No choices yet — be the first to continue this story.</p>
-        ) : (
-          <ul>
-            {chapter.childChapters.map((choice) => (
-              <li key={choice.id}>
-                <Link href={`/stories/${storyId}/chapters/${choice.id}`}>{choice.title}</Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link href={`/stories/${storyId}/chapters/${chapterId}/new`}>Add a chapter</Link>
-      </section>
-    </main>
+    <ChapterReader
+      storyId={storyId}
+      chapterId={chapter.id}
+      title={chapter.title}
+      content={chapter.content}
+      storyTitle={chapter.story.title}
+      choices={chapter.childChapters.map((choice) => ({
+        id: choice.id,
+        title: choice.title,
+        likeCount: choice._count.likes
+      }))}
+    />
   );
 }

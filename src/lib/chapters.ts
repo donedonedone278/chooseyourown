@@ -64,7 +64,8 @@ export async function getChapterWithChoices(chapterId: string) {
       story: true,
       childChapters: {
         where: { deletedAt: null },
-        orderBy: { createdAt: 'asc' }
+        orderBy: { createdAt: 'asc' },
+        include: { _count: { select: { likes: true } } }
       }
     }
   });
