@@ -66,6 +66,7 @@ npx playwright test tests/e2e/home.spec.ts --project=chromium
 
 - **Vitest** (`vitest.config.ts`): node environment, `fileParallelism: false` (tests share one SQLite DB, so they run serially). `src/test/global-setup.ts` sets `DATABASE_URL` to `file:./test.db` and runs `prisma db push --skip-generate` before the suite. Include globs cover `src/**/*.test.ts(x)` and `tests/unit/**`; e2e is excluded.
 - Use the factories in `src/test/factories.ts` (`createUser`, `createStory`, `createChapter`) for test data — they upsert authors and generate unique fields, so don't hand-roll Prisma inserts in tests.
+- **Unit tests must not import server-only code** — server components, `src/lib/auth.ts`, or anything that pulls in `next-auth`/`next/server`. Those can't load in Vitest's node environment and will fail the whole file at import time. Unit-test pure domain/lib modules (e.g. `src/lib/chapters.ts`, `src/lib/passwords.ts`); exercise auth and server components through Playwright instead.
 - **Playwright** (`playwright.config.ts`): chromium only, baseURL `http://127.0.0.1:3000`, auto-starts `npm run dev` and reuses an existing server. The plan treats browser coverage as first-class — new user-facing features should land with an e2e spec.
 - **Scope e2e queries to a landmark region** (`page.locator('header' | 'main' | 'nav').getByRole(...)`) rather than querying the whole page. This is the standing convention — it makes assertions intention-revealing and avoids strict-mode collisions when the same accessible name legitimately appears in nav and page content. Don't give two interactive elements the same accessible name *and* destination; differentiate the copy instead (e.g. nav "Start a story" vs homepage hero "Write the first chapter").
 - E2e tests that create rows in the shared dev db must use unique inputs per run (e.g. `avery-${Date.now()}@example.com`) so they stay repeatable; there is no per-test db reset for the browser suite yet.
@@ -75,12 +76,12 @@ npx playwright test tests/e2e/home.spec.ts --project=chromium
 
 Development runs on **WSL2** (Linux subsystem on a Windows host). Keep the repo on the Linux filesystem (`/home/...`, where it currently lives) rather than under `/mnt/c/...` — that's what keeps `npm install`, file watching, and HMR fast. The dev server binds `127.0.0.1:3000`; WSL2's localhost forwarding makes that reachable from the Windows browser. Playwright runs headless Chromium (works out of the box); *headed* mode would need an X server / WSLg.
 
-`DATABASE_URL` is required (SQLite, e.g. `file:./dev.db`); tests default it to `file:./test.db`. Auth (planned) will add `AUTH_SECRET`. `.env` and `*.db` are gitignored.
+`DATABASE_URL` (SQLite, e.g. `file:./dev.db`) and `AUTH_SECRET` (Auth.js JWT signing) are both required; tests default `DATABASE_URL` to `file:./test.db`. `.env` and `*.db` are gitignored.
 
 First-time local setup (these artifacts don't live in git, so a fresh clone needs them):
 ```bash
 npm install
-printf 'DATABASE_URL="file:./dev.db"\n' > .env
+printf 'DATABASE_URL="file:./dev.db"\nAUTH_SECRET="%s"\n' "$(openssl rand -base64 33)" > .env
 npx prisma db push                 # create the dev SQLite db from the schema
 npx playwright install chromium    # browser for the e2e stage of `npm test`
 ```

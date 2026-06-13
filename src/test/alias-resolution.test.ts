@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { SiteHeader } from '@/components/layout/site-header';
+// Import a pure leaf module to prove the `@/` alias resolves under Vitest.
+// Don't point this at server components or anything that imports `next-auth`
+// /`next/server` — those can't load in Vitest's node environment.
+import { hashPassword } from '@/lib/passwords';
 
 describe('Vitest path alias', () => {
   it('resolves @/ imports', () => {
-    expect(SiteHeader).toBeTypeOf('function');
+    expect(hashPassword).toBeTypeOf('function');
   });
 });
