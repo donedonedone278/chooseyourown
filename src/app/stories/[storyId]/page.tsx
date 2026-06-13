@@ -1,30 +1,34 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { getStoryById } from '@/lib/stories';
+import { getStoryOverview } from '@/lib/stories';
 import styles from '../story.module.css';
 
 export default async function StoryPage({ params }: { params: Promise<{ storyId: string }> }) {
   const { storyId } = await params;
-  const story = await getStoryById(storyId);
+  const story = await getStoryOverview(storyId);
 
   if (!story) {
     notFound();
   }
 
+  const { title, authorName, rootChapterId, chapterCount, endingCount, contributorCount } = story;
+
   return (
-    <main>
-      <h1>{story.title}</h1>
-      <p className={styles.meta}>
-        {story.chapters.length} chapter{story.chapters.length === 1 ? '' : 's'}
+    <main className={styles.cover}>
+      <h1>{title}</h1>
+      <p className={styles.stats}>
+        by {authorName} · {chapterCount} chapter{chapterCount === 1 ? '' : 's'} ·{' '}
+        {endingCount} ending{endingCount === 1 ? '' : 's'} · {contributorCount} writer
+        {contributorCount === 1 ? '' : 's'}
       </p>
-      <ul className={styles.list}>
-        {story.chapters.map((chapter) => (
-          <li key={chapter.id} className={styles.item}>
-            <Link href={`/stories/${storyId}/chapters/${chapter.id}`}>{chapter.title}</Link>
-          </li>
-        ))}
-      </ul>
+      {rootChapterId ? (
+        <Link href={`/stories/${storyId}/chapters/${rootChapterId}`} className={`btn btn--primary ${styles.begin}`}>
+          Begin the story
+        </Link>
+      ) : (
+        <p className={styles.empty}>No chapters yet.</p>
+      )}
     </main>
   );
 }

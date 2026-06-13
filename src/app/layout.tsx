@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Newsreader } from 'next/font/google';
 
+import { HeaderShell } from '@/components/layout/header-shell';
 import { SiteHeader } from '@/components/layout/site-header';
 import './globals.css';
 
@@ -20,7 +21,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={serif.variable}>
       <body>
-        <SiteHeader />
+        <HeaderShell>
+          <SiteHeader />
+        </HeaderShell>
         {children}
       </body>
     </html>

@@ -1,15 +1,39 @@
 import { db } from '@/lib/db';
 
-export async function getStoryById(storyId: string) {
-  return db.story.findUnique({
+/**
+ * Cover/landing-page data for a story: title, author, root chapter, and
+ * lightweight stats derived from its non-deleted chapters.
+ */
+export async function getStoryOverview(storyId: string) {
+  const story = await db.story.findUnique({
     where: { id: storyId },
     include: {
+      author: { select: { displayName: true } },
       chapters: {
         where: { deletedAt: null },
-        orderBy: { createdAt: 'asc' }
+        select: { id: true, parentChapterId: true, authorId: true }
       }
     }
   });
+
+  if (!story) {
+    return null;
+  }
+
+  const parentIds = new Set(
+    story.chapters.map((chapter) => chapter.parentChapterId).filter((id): id is string => id !== null)
+  );
+  const endingCount = story.chapters.filter((chapter) => !parentIds.has(chapter.id)).length;
+  const contributorCount = new Set(story.chapters.map((chapter) => chapter.authorId)).size;
+
+  return {
+    title: story.title,
+    authorName: story.author.displayName,
+    rootChapterId: story.rootChapterId,
+    chapterCount: story.chapters.length,
+    endingCount,
+    contributorCount
+  };
 }
 
 /** Recent non-deleted chapters across all stories, newest first — the homepage feed. */
