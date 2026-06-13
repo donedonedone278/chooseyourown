@@ -2,6 +2,23 @@
 
 Patterns to repeat / mistakes not to repeat. Review at session start.
 
+## Fix the procedure, don't work around recurring flaws (2026-06-13)
+
+**Correction:** When a step in our own process keeps biting us, update the documented
+procedure (`CLAUDE.md` / this file) instead of patching around it case-by-case — otherwise
+we hit the same issue every time. Corollary: doc/procedure fixes discovered *while working
+on a feature* go on that feature branch, so they travel with the work that surfaced them.
+
+## The main session starts dev:phone, not the implementing subagent (2026-06-13)
+
+**Mistake:** Subagent prompts told Sonnet to run `npm run dev:phone`. A subagent's
+background processes are killed when its turn ends, so the preview was dead before the user
+could open it — and we kept manually relaunching (a work-around).
+
+**Rule:** Only the **orchestrator (main session)** starts/relaunches `dev:phone`; its
+background process survives across turns. Don't instruct implementing subagents to start it.
+Baked into `CLAUDE.md` → "Development loop."
+
 ## Per-feature workflow: branch → plan → sonnet → approval → merge (2026-06-13)
 
 **Process:** Every enhancement/feature goes: branch off `develop` → write a plan (for a

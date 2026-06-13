@@ -1,22 +1,43 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .toolbar {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: var(--space-2);
 }
 
 .toolbarButton {
+  font-family: var(--font-sans);
   font-weight: 700;
-  border: 1px solid #888;
-  border-radius: 4px;
-  background: #fff;
-  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  min-height: 36px;
+  min-width: 36px;
+  padding: var(--space-1) var(--space-3);
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.toolbarButton:hover {
+  border-color: var(--accent);
 }
 
 .toolbarButton[aria-pressed='true'] {
-  background: #333;
-  color: #fff;
-  border-color: #333;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
 }
 
 .toolbarButton[data-mark='italic'] {
@@ -24,15 +45,22 @@
 }
 
 .content {
-  border: 1px solid #888;
-  border-radius: 4px;
-  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-3);
   min-height: 8rem;
+  font-size: var(--step-0);
+  line-height: var(--leading);
 }
 
 .content :global(.ProseMirror) {
   outline: none;
   min-height: 7rem;
+}
+
+.content :global(.ProseMirror:focus-visible) {
+  outline: none;
 }
 
 .content :global(strong) {
@@ -43,11 +71,20 @@
   font-style: italic;
 }
 
+.help {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 .markdownView {
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
   white-space: pre-wrap;
-  background: #f5f5f5;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 0.5rem 0.75rem;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
 }

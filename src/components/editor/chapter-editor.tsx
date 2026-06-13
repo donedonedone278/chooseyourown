@@ -62,8 +62,10 @@ export function ChapterEditor() {
   });
 
   return (
-    <div>
-      <span id="chapter-content-label">Chapter content</span>
+    <div className={styles.wrapper}>
+      <span id="chapter-content-label" className={styles.label}>
+        Chapter content
+      </span>
       <div className={styles.toolbar}>
         <button
           type="button"
@@ -98,7 +100,7 @@ export function ChapterEditor() {
         <EditorContent editor={editor} />
       </div>
       <input type="hidden" name="content" value={markdown} />
-      <p id="content-help">
+      <p id="content-help" className={styles.help}>
         Select text and use Bold/Italic (or &#8984;/Ctrl+B, &#8984;/Ctrl+I).
       </p>
       {showMarkdown ? (

@@ -1,254 +1,213 @@
-# Feature: WYSIWYG chapter editor (Tiptap) with a read-only Markdown view
+# Feature: Literary/bookish visual design (light + dark)
 
-**Branch:** `feat/wysiwyg-editor` (off `develop`). Merge to `develop` only after user approval.
-**Plan author:** Opus. **Implementer:** Sonnet, test-first. Gate: `npm test` green.
+**Branch:** `feat/literary-styling` (off `develop`). Merge to `develop` only after user approval.
+**Plan author:** Opus. **Implementer:** Sonnet. Gate: `npm test` green, then phone preview.
 
 ## Context
 
-Writers don't know that a blank line is required between paragraphs (CommonMark treats a
-single Enter as a soft break), and they have no discoverable way to bold/italicize. We're
-replacing the raw-Markdown `<textarea>` in `src/components/editor/chapter-editor.tsx` with
-a **Tiptap (ProseMirror) WYSIWYG editor**: bold looks bold, Enter makes a real paragraph,
-and **Cmd/Ctrl+B/I work cross-platform for free** (ProseMirror's `Mod-` keymap resolves to
-Cmd on macOS, Ctrl elsewhere — no custom key handling). A toggle reveals a **read-only
-"Markdown" pane** showing exactly what will be stored.
+The app is functionally complete but almost entirely **unstyled** — bare semantic HTML, no
+global stylesheet, no CSS framework (only `chapter-editor.module.css` exists). This pass
+gives it a cohesive **literary / bookish** identity: warm paper tones, a serif reading
+typography, generous line-height and a comfortable reading measure — fitting for an app
+about reading and writing stories.
 
-**Hard constraint — storage is unchanged.** Chapter content stays portable restricted
-Markdown (paragraph/bold/italic, plus hard breaks), still validated by
-`validateChapterContent` (`src/lib/rich-text.ts`) and rendered by `MarkdownContent`
-(`src/components/chapters/markdown-content.tsx`). The editor serializes its document to
-that exact Markdown subset into the existing hidden `content` field, so **no server
-actions, validation, or storage change** — the editor is swapped behind the same form
-contract. (`chapter-editor.tsx` was always designed to be swappable; see `CLAUDE.md`.)
+**Decisions (already made with the user):**
+- **Plain CSS** — a global tokens stylesheet + per-component **CSS Modules** (same idiom as
+  the existing editor module). **No new CSS framework / build tooling.** (Adding `next/font`
+  for self-hosted fonts is fine and expected.)
+- **Literary/bookish** vibe: warm off-white paper background, ink text, serif body + headings,
+  a muted literary accent (e.g. oxblood/ink-blue), choices rendered as inviting tappable cards.
+- **Light + dark**, driven by CSS variables + `@media (prefers-color-scheme: dark)` — **respect
+  the OS preference, no manual toggle** (keeps it simple, no client JS).
 
-## Design decisions
+## Hard constraint — don't break behavior or the test suite
 
-1. **Tiptap, restricted to our subset.** Use `@tiptap/react` + `@tiptap/starter-kit` +
-   `@tiptap/pm`. Configure StarterKit to **disable** everything outside the allowlist
-   (heading, lists, listItem, blockquote, codeBlock, code, horizontalRule, strike, etc.);
-   keep `document`, `paragraph`, `text`, `bold`, `italic`, `history`, and `hardBreak`.
-   With those nodes absent from the schema, typing `# ` / `- ` creates nothing and pasted
-   headings/links collapse to plain text — and `validateChapterContent` is the final
-   server-side backstop regardless.
+This is a **visual** change only. Preserve all DOM semantics the tests and a11y rely on:
+- Keep the landmark elements and structure: `<header>`, `<nav>`, `<main>`, `<article>`,
+  headings at their current levels, lists, `<form>`.
+- **Do not change any accessible names, label associations, or asserted text.** Tests target,
+  among others: the `Recent chapters` / `Open reports` headings; nav/links `Start a story`,
+  `Add a chapter`, `Sign in`; `getByLabel` for `Display name`, `Email`, `Password`,
+  `Story title`, `Chapter title`, `Chapter content`, `Reason`; buttons `Create account`,
+  `Sign in`, `Publish first chapter`, `Publish chapter`, `Bold`, `Italic`, `View Markdown`,
+  `Report chapter`, `Submit report`, `Like`/`Liked`, `Remove chapter`, `Dismiss`; and text
+  like `Signed in as <name>`, `Report submitted`, `Liked by N reader(s)`, `N likes`.
+- Style by adding `className`s and wrapper elements only; don't rename, reorder, or drop the
+  above. Run `npm test` to confirm the full suite still passes.
+- **Accessibility:** both themes must meet **WCAG AA** contrast for text and interactive
+  elements; visible focus states on all links/buttons/inputs; set `color-scheme: light dark`.
 
-2. **Hand-rolled doc→Markdown serializer (no `tiptap-markdown` dep).** The subset is tiny,
-   and the editor always starts empty (there is no edit-existing-chapter flow — `ChapterEditor`
-   is rendered once in `chapter-form.tsx` with no initial content), so we only need
-   **doc → Markdown**, never Markdown → doc. A ~40-line pure function gives guaranteed
-   subset-compliant output and powers both the saved value and the Markdown view.
+## Step 1 — Foundation: fonts, tokens, base styles
 
-3. **Cross-platform shortcuts come from the library.** Tiptap's Bold/Italic extensions bind
-   `Mod-b`/`Mod-i`; `Mod` = ⌘ on macOS, Ctrl on Win/Linux. We add **toolbar buttons** as the
-   discoverable, deterministically-testable path; the keyboard shortcuts are free.
-
-4. **Testing tiers.** Tiptap is contentEditable/ProseMirror and does **not** run in jsdom
-   (it needs DOM range APIs jsdom lacks) — so: unit-test the **pure serializer** in the node
-   tier, and test the **editor behavior** with Playwright. Don't add a jsdom test for the
-   editor. Existing `markdown-content.test.tsx` is untouched.
-
-5. **Accessibility / selectors.** The editor isn't a labelable control, so associate a
-   visible label via `aria-labelledby` (so Playwright `getByLabel('Chapter content')` keeps
-   working) and give toolbar buttons `aria-label` + `aria-pressed`.
-
----
-
-## Step 1 — Pure serializer + unit test (node tier)
-
-### 1a. Failing test — `tests/unit/chapter-markdown.test.ts`
-Cover: plain paragraphs join with a blank line; bold → `**x**`; italic → `*x*`; bold+italic
-→ `***x***`; a hard break serializes to a CommonMark hard break; **literal `*`/`_` in text
-are escaped** so they round-trip as literal; and the invariant that output always passes
-validation:
-```ts
-import { describe, expect, it } from 'vitest';
-import { serializeDocToMarkdown } from '@/lib/chapter-markdown';
-import { validateChapterContent } from '@/lib/rich-text';
-
-const doc = (content: unknown[]) => ({ type: 'doc', content });
-const para = (content: unknown[]) => ({ type: 'paragraph', content });
-const text = (t: string, marks?: string[]) =>
-  ({ type: 'text', text: t, ...(marks ? { marks: marks.map((type) => ({ type })) } : {}) });
-
-describe('serializeDocToMarkdown', () => {
-  it('joins paragraphs with a blank line', () => {
-    expect(serializeDocToMarkdown(doc([para([text('One')]), para([text('Two')])]))).toBe('One\n\nTwo');
-  });
-  it('serializes bold, italic, and both', () => {
-    expect(serializeDocToMarkdown(doc([para([text('a', ['bold'])])]))).toBe('**a**');
-    expect(serializeDocToMarkdown(doc([para([text('a', ['italic'])])]))).toBe('*a*');
-    expect(serializeDocToMarkdown(doc([para([text('a', ['bold', 'italic'])])]))).toBe('***a***');
-  });
-  it('escapes literal markdown so it round-trips as text and stays valid', () => {
-    const md = serializeDocToMarkdown(doc([para([text('use *stars* and _scores_')])]));
-    expect(() => validateChapterContent(md)).not.toThrow();
-    // re-parsing must not yield emphasis — the asterisks are literal
-    expect(md).toContain('\\*stars\\*');
-  });
-});
+### 1a. Fonts via `next/font/google` (self-hosted, no layout shift)
+In `src/app/layout.tsx`, load a literary reading serif as the primary family — recommend
+**Newsreader** or **Source Serif 4** (variable, designed for reading). Expose it as a CSS
+variable and apply the class to `<html>`:
+```tsx
+import { Newsreader } from 'next/font/google';
+const serif = Newsreader({ subsets: ['latin'], variable: '--font-serif', display: 'swap' });
+// <html lang="en" className={serif.variable}>
 ```
-Run red: `npm run test:unit -- tests/unit/chapter-markdown.test.ts`
+Optionally add a clean system **sans** stack as `--font-sans` for small UI labels/nav (a CSS
+var with system fonts, no extra download). Body + headings use the serif. Also add a basic
+`export const metadata = { title: 'Choose Your Own', description: '…' }`.
 
-### 1b. Implement `src/lib/chapter-markdown.ts`
-A pure function `serializeDocToMarkdown(doc: ProseMirrorDocJSON): string`:
-- `doc` → map block children, filter out empty paragraphs, join with `\n\n`.
-- `paragraph` → concatenate inline children.
-- `text` → escape the text, then wrap by marks: both bold+italic → `***…***`, bold → `**…**`,
-  italic → `*…*`.
-- `hardBreak` → CommonMark hard break (`\` + `\n`) within the paragraph.
-- **Escape** in text nodes: backslash, `` * _ ` ``; and at a paragraph's start, a leading
-  `#`, `>`, `-`, `+`, `~`, or `digit.`/`digit)` so typed block syntax can't re-parse into a
-  disallowed node. Keep types minimal (define a small local `DocNode` type; no `any`).
-- Result is trimmed (no leading/trailing blank lines) so it matches `validateChapterContent`'s trim.
+### 1b. `src/app/globals.css` (new) — imported once in `layout.tsx`
+Contains, in this order:
+- **Minimal reset:** `*{box-sizing:border-box} body,h1,h2,p,figure,ul{margin:0}`, `img,svg{max-width:100%}`, list reset where we re-style.
+- **Tokens** as CSS variables on `:root` (light defaults) then overridden in
+  `@media (prefers-color-scheme: dark)`. Define a coherent palette + scale:
+  - color: `--bg` (warm paper, ~`#faf6ef` light / deep warm charcoal ~`#1b1714` dark),
+    `--surface` (cards), `--text` (ink), `--text-muted`, `--accent` (literary oxblood or
+    ink-blue), `--accent-contrast`, `--border`, `--like` (heart).
+  - type scale (`--step-0`…`--step-4` or named), `--leading` (~1.7 for body),
+    `--measure: 65ch` (reading width).
+  - spacing scale (`--space-1`…`--space-6`), `--radius`, `--shadow`.
+  - `color-scheme: light dark;`
+- **Base element styles:** `body{background:var(--bg);color:var(--text);font-family:var(--font-serif);line-height:var(--leading)}`;
+  headings (serif, tighter leading, sizes from the scale); `a` (accent color, clear
+  hover/focus, underlines for in-content links); `p` spacing.
+- **Layout:** style `main` as a centered column (`max-width`, horizontal padding, vertical
+  rhythm) so every page gets a sensible container without new wrappers. The reader narrows
+  further to `--measure` via its module.
+- **Form + button baselines:** inputs/textarea (padding, border, radius, bg `--surface`,
+  inherit font, focus ring); a base `button`/`.btn` with variants `.btn--primary`,
+  `.btn--secondary`, `.btn--danger` (used by admin "Remove chapter"). Buttons should look
+  tappable (good touch target ≥44px) since this is used on phones.
 
-Run green: `npm run test:unit -- tests/unit/chapter-markdown.test.ts`
+## Step 2 — Layout shell: `site-header`
 
----
+`src/components/layout/site-header.module.css` + className updates in `site-header.tsx`:
+sticky top header with a subtle bottom border/shadow, brand wordmark in serif on the left,
+nav on the right, comfortable tap targets, `Signed in as …` and the admin `Reports` link
+styled as muted nav items. Keep `<header>`/`<nav>` and all link text unchanged.
 
-## Step 2 — Add Tiptap and build the editor
+## Step 3 — Primary surfaces (one CSS Module each)
 
-### 2a. Dependencies
-```bash
-npm install @tiptap/react @tiptap/starter-kit @tiptap/pm
-```
-Use the current major (Tiptap v3 line is React 19-ready). If `npm install` reports a React
-19 peer conflict, prefer the v3 packages; do **not** use `--force`. Run `npm run typecheck`
-to confirm types resolve.
+For each, add a `.module.css` next to the component and apply classNames. Keep markup
+semantics; enhance presentation.
 
-### 2b. Rewrite `src/components/editor/chapter-editor.tsx` (`'use client'`)
-- `useEditor({ extensions: [StarterKit.configure({ /* disable non-subset nodes/marks */ })],
-  immediatelyRender: false, editorProps: { attributes: { 'aria-labelledby': 'chapter-content-label',
-  role: 'textbox', 'aria-multiline': 'true' } }, onUpdate })`.
-  - `immediatelyRender: false` is required under Next SSR to avoid hydration mismatch.
-- State `markdown`, recomputed from `serializeDocToMarkdown(editor.getJSON())` on `onUpdate`
-  (and once on create).
-- **Hidden field** `<input type="hidden" name="content" value={markdown} />` — preserves the
-  form contract; `createStory` / `createChildChapterAction` read `formData.get('content')` unchanged.
-- **Toolbar** (above the editor): `<button type="button">` Bold and Italic, each with
-  `aria-label="Bold"/"Italic"`, `aria-pressed={editor.isActive('bold'/'italic')}`,
-  `onClick={() => editor.chain().focus().toggleBold()/toggleItalic().run()}`. `type="button"`
-  so they never submit the form.
-- Visible label `<span id="chapter-content-label">Chapter content</span>` and `<EditorContent editor={editor} />`.
-- **"View Markdown" toggle**: a `<button type="button">View Markdown</button>` (`aria-pressed`)
-  that reveals a **read-only** `<pre aria-label="Markdown source">{markdown}</pre>` (or readOnly
-  textarea). Default hidden — WYSIWYG is the primary surface.
-- Replace the old `**bold**` hint with: "Select text and use Bold/Italic (or ⌘/Ctrl+B, ⌘/Ctrl+I)."
-- Empty content is still blocked server-side by `validateChapterContent`; native `required`
-  doesn't apply to a contentEditable, so don't rely on it. (Optional nicety, not required:
-  reflect emptiness for a disabled submit — skip if it complicates the server-component form.)
-- Minimal editor styling so bold/italic are visibly distinct (a small CSS module or inline is fine).
+- **Home feed** (`recent-chapter-feed.tsx`): `Recent chapters` heading + intro; the chapter
+  list as a responsive grid/stack of **cards** (`--surface`, border, radius, subtle shadow,
+  hover lift), each showing the chapter-title link and muted `From <story>`. Style the empty
+  state. (Note: this component already renders `<main>`; keep that.)
+- **Chapter reader** (`chapter-reader.tsx`): the article constrained to `--measure` for
+  comfortable reading; the `From <story>` breadcrumb muted; body text generous. The
+  **Choices** render as a list of large tappable cards (title + like count) — the visual
+  centerpiece of the branching feel. Style the **Reactions** section: a clear Like button
+  (heart, with the `Liked` disabled state), the `Liked by N readers` count, and the
+  `Report chapter` disclosure + reason form. `Add a chapter` styled as a secondary action.
+- **Story overview** (`stories/[storyId]/page.tsx`): story title (serif display) + the chapter
+  list styled like the feed rows/cards.
+- **Forms & editor** (`chapter-form.tsx`, `chapter-editor.tsx`, `stories/new`, `chapter…/new`):
+  a `chapter-form.module.css` styling labels/inputs/submit consistently. **Harmonize the
+  existing `chapter-editor.module.css`** to use the new tokens (toolbar buttons get the
+  shared button styles + clear active state; the editor surface looks like a writing area;
+  the read-only Markdown pane is visually distinct/muted).
+- **Auth** (`auth/sign-in`, `auth/sign-up`): a centered narrow auth card reusing the form
+  styles; the two pages should look like siblings.
+- **Admin reports** (`admin/reports/page.tsx`, `report-chapter.tsx`): report items as cards
+  with the reason and reporter; `Remove chapter` as `.btn--danger`, `Dismiss` as secondary.
 
-`src/components/chapters/chapter-form.tsx` keeps `<ChapterEditor />` as-is (no prop changes).
-
----
-
-## Step 3 — Playwright coverage
-
-### 3a. New `tests/e2e/editor.spec.ts`
-Sign up, go to `/stories/new`, then in the editor (scope to `main`):
-- Type "First para", press `Enter`, type "Second para"; publish; assert the reader renders
-  **two** `<p>` (`main` `locator('p')` count / distinct paragraph text).
-- Select text and click the **Bold** toolbar button → publish → assert `main` shows a
-  `<strong>`; repeat for **Italic** → `<em>`.
-- Toggle **View Markdown** and assert the pane shows the expected `**…**` / paragraph blank line.
-- (Optional) also exercise `page.keyboard.press('Control+b')` on Linux/CI as a smoke check;
-  the toolbar button is the authoritative assertion (Mac's ⌘ is handled by Tiptap, untestable here).
-
-### 3b. Update the 4 specs that fill `'Chapter content'`
-`reading.spec.ts`, `reporting.spec.ts`, `full-journey.spec.ts` fill **plain** text — confirm
-`getByLabel('Chapter content').fill('…')` still works against the contentEditable (Playwright
-`fill` supports `[contenteditable]`; `getByLabel` matches via `aria-labelledby`). If `fill`
-is unreliable on contentEditable, fall back to `.click()` + `.pressSequentially('…')`.
-`chapter-creation.spec.ts` currently types `**midnight**`/`*creaking*` and asserts the
-**rendered** text — rework it to type plain text then apply **bold/italic via the toolbar**,
-and assert the reader shows `<strong>`/`<em>` (don't type literal Markdown — WYSIWYG would
-store the asterisks as escaped literals).
-
----
-
-## Step 4 — Gate, then request approval to merge
+## Step 4 — Gate, preview, request approval
 
 ```bash
-npm test   # lint → typecheck → unit → e2e (fail-fast)
+npm test            # full suite must stay green (proves semantics/a11y intact)
 ```
-Then expose for phone testing per `CLAUDE.md` "Development loop":
+Spot-check WCAG AA contrast in **both** light and dark (e.g. simulate dark via DevTools /
+OS). Then expose for phone testing per `CLAUDE.md` "Development loop":
 ```bash
-npm run dev:phone   # background; hand the user the URL + "what to try"
+npm run dev:phone   # background; hand the user the URL + a "what to look at" tour
 ```
-Commit on the branch as you go. **Do not merge to `develop`** — report back for the user's
-approval. On approval: `git checkout develop && git merge --no-ff feat/wysiwyg-editor && git push origin develop`.
+Commit on the branch as you go. **Do not merge to `develop`** — report back for approval.
+On approval: `git checkout develop && git merge --no-ff feat/literary-styling && git push origin develop`.
+
+> No new behavioral tests: this is a pure restyle with no new behavior, so value comes from
+> the existing suite staying green + the phone review. Don't add brittle visual-assertion tests.
 
 ---
 
 ## File checklist
 
 **New**
-- [ ] `src/lib/chapter-markdown.ts` — pure doc→Markdown serializer
-- [ ] `tests/unit/chapter-markdown.test.ts`
-- [ ] `tests/e2e/editor.spec.ts`
+- [ ] `src/app/globals.css` — tokens (light+dark), reset, base typography, layout, button/form baselines
+- [ ] `src/components/layout/site-header.module.css`
+- [ ] `src/components/feed/recent-chapter-feed.module.css`
+- [ ] `src/components/chapters/chapter-reader.module.css`
+- [ ] `src/components/chapters/chapter-form.module.css` (shared by forms + auth)
+- [ ] `src/components/chapters/report-chapter.module.css` (or fold into reader module)
+- [ ] `src/app/admin/reports/reports.module.css` (or co-located module)
+- [ ] `src/app/stories/story.module.css` (story overview) — or co-located
 
 **Modified**
-- [ ] `src/components/editor/chapter-editor.tsx` — Tiptap WYSIWYG + toolbar + Markdown view
-- [ ] `package.json` / `package-lock.json` — `@tiptap/*` deps
-- [ ] `tests/e2e/chapter-creation.spec.ts` — bold/italic via toolbar (not typed Markdown)
-- [ ] `tests/e2e/{reading,reporting,full-journey}.spec.ts` — verify/adjust contentEditable fills
+- [ ] `src/app/layout.tsx` — `next/font`, import `globals.css`, `metadata`, html font var class
+- [ ] All `page.tsx` + components listed in Step 2–3 — add classNames/wrappers only
+- [ ] `src/components/editor/chapter-editor.module.css` — re-base on the new tokens
 
-**Unchanged on purpose** (the swap stays behind the form contract)
-- `src/lib/rich-text.ts`, `src/components/chapters/markdown-content.tsx`,
-  `src/actions/*`, `prisma/schema.prisma`
+**Unchanged**
+- DOM text, roles, landmarks, label associations, accessible names (see Hard constraint)
+- `src/lib/*`, `src/actions/*`, `prisma/schema.prisma`, `markdown-content.test.tsx`
 
 ## Review (fill in after implementation)
 
-**Summary:** Implemented all 4 steps as planned, test-first.
+- **Font:** Newsreader (variable, via `next/font/google`), exposed as `--font-serif` and
+  applied to `<html>`. System sans stack as `--font-sans` for small UI labels/nav (header
+  nav, form labels, breadcrumbs, helper text, like counts).
 
-- **Step 1** — `src/lib/chapter-markdown.ts` (`serializeDocToMarkdown`) with
-  `tests/unit/chapter-markdown.test.ts` (7 tests, expanded slightly beyond the
-  plan's snippet: also covers hard breaks, leading `#` escaping, empty-paragraph
-  filtering, and a mixed-marks "always valid" invariant). Confirmed red (module
-  not found) before implementing, then green.
-- **Step 2** — Installed `@tiptap/react@3.26.1`, `@tiptap/starter-kit@3.26.1`,
-  `@tiptap/pm@3.26.1` (current v3, React-19-ready). **No peer conflicts** —
-  plain `npm install` worked, no `--force` needed. Rewrote
-  `src/components/editor/chapter-editor.tsx` as a `'use client'` Tiptap editor:
-  StarterKit with heading/lists/listItem/listKeymap/blockquote/codeBlock/code/
-  horizontalRule/strike/link/underline all disabled (leaving document,
-  paragraph, text, bold, italic, hardBreak, history, dropcursor, gapcursor,
-  trailingNode — none of which can produce disallowed Markdown). Added
-  `chapter-editor.module.css` for minimal styling (bold/italic render visibly
-  distinct; toolbar buttons get a pressed style). `chapter-form.tsx` is
-  untouched — `<ChapterEditor />` usage unchanged.
-- **Step 3** — New `tests/e2e/editor.spec.ts` covers: two paragraphs via Enter
-  (asserted via distinct `<em>`/`<strong>` wrapping `<p>`s in the reader),
-  bold/italic via toolbar buttons (asserting `aria-pressed` and rendered
-  `<strong>`/`<em>`), and the "View Markdown" pane showing `*…*`/`**…**`.
-  Updated `reading.spec.ts`, `reporting.spec.ts`, `full-journey.spec.ts` —
-  **no changes needed**, `getByLabel('Chapter content').fill('…')` works
-  fine against Tiptap's contentEditable (no fallback to `pressSequentially`
-  required for plain-text fills). Reworked `chapter-creation.spec.ts`: types
-  plain text, selects the paragraph (click + Home + Shift+End), applies
-  Bold/Italic via the toolbar, and asserts `<strong>`/`<em>` in the reader for
-  both the root and child chapter.
-- **Step 4** — `npm test` fully green: lint (no warnings), typecheck (clean),
-  unit (6 files / 18 tests passed), e2e (7/7 passed, chromium).
+- **Light palette:**
+  - `--bg` `#faf6ef` (warm paper)
+  - `--surface` `#ffffff` (cards)
+  - `--surface-muted` `#f1ebe1` (reactions box, markdown preview)
+  - `--text` `#2a2420` (ink)
+  - `--text-muted` `#6f6258`
+  - `--accent` `#7d2e2e` (oxblood), `--accent-hover` `#6a2424`, `--accent-contrast` `#fffaf4`
+  - `--border` `#ddd2c2`
+  - `--like` `#b3433f`
+  - `--danger` `#a3312b`, `--danger-contrast` `#fffaf4`
+  - `--focus-ring` `#2a6f8e` (blue, distinct from accent for visibility)
 
-**Deviations / notes:**
-- `editor.isActive('bold'/'italic')` (used for toolbar `aria-pressed`) only
-  reflects the latest state on re-render; `onUpdate` alone (doc-content
-  changes) wasn't enough to keep it in sync with *selection* changes. Added
-  `onSelectionUpdate`/`onTransaction` handlers that force a re-render so
-  `aria-pressed` stays accurate immediately after toolbar clicks and cursor
-  moves — needed for the e2e assertions to be reliable.
-- In e2e, **double-click-to-select-a-word did not produce a selection Tiptap
-  picked up** (`window.getSelection()` came back empty after `dblclick()` on
-  ProseMirror content). Switched to click into the paragraph + `Home` +
-  `Shift+End` to select the full line before toggling Bold/Italic — this
-  worked reliably everywhere it was needed.
-- Serializer escaping: backslash, `*`, `_`, `` ` `` are escaped anywhere in
-  text; a leading `#`/`>`/`-`/`+`/`~`/ordered-list marker at the start of a
-  paragraph has its first character escaped so it can't re-parse into a
-  disallowed block node. Empty paragraphs are dropped before joining with
-  `\n\n`, and the final result is trimmed to match `validateChapterContent`'s
-  trim.
-- Styling: `chapter-editor.module.css` gives the ProseMirror content area a
-  border/min-height, makes `<strong>`/`<em>` visibly bold/italic inside the
-  editor, and styles the toolbar buttons (bold "B", italic "I", with a dark
-  "pressed" state) plus a light-gray `<pre>` for the Markdown view.
+- **Dark palette:**
+  - `--bg` `#1b1714` (deep warm charcoal)
+  - `--surface` `#261f1b`
+  - `--surface-muted` `#2f2722`
+  - `--text` `#efe7dc`
+  - `--text-muted` `#b3a596`
+  - `--accent` `#e0a39a` (lightened oxblood for contrast on dark), `--accent-hover` `#ecbcb4`,
+    `--accent-contrast` `#1b1714`
+  - `--border` `#423831`
+  - `--like` `#e07a74`
+  - `--danger` `#e0837c`, `--danger-contrast` `#1b1714`
+  - `--focus-ring` `#7fc3e8`
+
+  All text/background pairs were chosen to clear ~4.5:1 contrast (e.g. light
+  `--text` #2a2420 on `--bg` #faf6ef ≈ 13:1; dark `--text` #efe7dc on `--bg` #1b1714 ≈ 14:1;
+  accent on its contrast color and vice versa both exceed 4.5:1 in both themes).
+  `color-scheme: light dark` is set on `:root` and both themes use a single
+  `@media (prefers-color-scheme: dark)` override block — no manual toggle/JS.
+
+- **Structural tweaks (classNames/wrappers only, no semantic changes):**
+  - `chapter-reader.tsx`: wrapped existing content in an `<article>` inside `<main>` for the
+    `--measure`-constrained reading column; added section/list/card classes.
+  - `recent-chapter-feed.tsx`, `stories/[storyId]/page.tsx`, `admin/reports/page.tsx`: list
+    items become card-styled `<li>`s via classNames only; headings/links/text unchanged.
+  - `report-chapter.tsx`: "Report chapter" button now uses shared `.btn--secondary`;
+    "Submit report" likewise; added a small wrapper `<form>`/`<p>` className for layout.
+  - `chapter-form.tsx`: new `chapter-form.module.css` shared by the story/chapter forms and
+    both auth pages (`.authCard` / `.authFooter` give sign-in/sign-up a centered card look).
+  - `chapter-editor.module.css` rebased onto the new tokens (toolbar buttons use
+    `--accent`/`--border`/`--surface`; `aria-pressed='true'` state uses `--accent`; Markdown
+    preview pane uses `--surface-muted`). `aria-labelledby="chapter-content-label"` wiring
+    unchanged — `getByLabel('Chapter content')` still resolves.
+  - `site-header.tsx`: sticky header, serif wordmark, nav — `<header>`/`<nav>` and all link
+    text/order unchanged.
+
+- **Deviations from plan:** none structurally significant. Used Newsreader (one of the two
+  recommended options). Buttons/links use shared global `.btn`, `.btn--primary`,
+  `.btn--secondary`, `.btn--danger` classes from `globals.css` combined with module classes
+  via template literals, per the plan's "base `button`/`.btn` with variants" guidance.
+
+- **Could not verify visually** (text-only environment): actual rendered colors/contrast in a
+  browser, dark-mode rendering via OS toggle, and the phone preview's visual appearance.
+  Confirmed by construction: both `:root` and `@media (prefers-color-scheme: dark)` blocks
+  define the full token set with no missing variables, and `npm test` (lint, typecheck,
+  unit, e2e — 18 unit + 7 e2e) is fully green, so DOM semantics/accessible names are intact.

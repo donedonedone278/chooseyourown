@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { likeChapterAction } from '@/actions/chapter-actions';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
 import { ReportChapter } from '@/components/chapters/report-chapter';
+import styles from './chapter-reader.module.css';
 
 type Choice = { id: string; title: string; likeCount: number };
 
@@ -29,46 +30,54 @@ export function ChapterReader({
 }) {
   return (
     <main>
-      <p>
-        From <Link href={`/stories/${storyId}`}>{storyTitle}</Link>
-      </p>
-      <h1>{title}</h1>
-      <MarkdownContent markdown={content} />
-
-      <section aria-label="Reactions">
-        <p>
-          Liked by {likeCount} {likeCount === 1 ? 'reader' : 'readers'}
+      <article className={styles.article}>
+        <p className={styles.breadcrumb}>
+          From <Link href={`/stories/${storyId}`}>{storyTitle}</Link>
         </p>
-        {isSignedIn ? (
-          <form action={likeChapterAction.bind(null, chapterId, storyId)}>
-            <button type="submit" disabled={viewerHasLiked}>
-              {viewerHasLiked ? 'Liked' : 'Like'}
-            </button>
-          </form>
-        ) : (
-          <Link href="/auth/sign-in">Sign in to like</Link>
-        )}
-        {isSignedIn ? <ReportChapter chapterId={chapterId} /> : null}
-      </section>
+        <h1>{title}</h1>
+        <div className={styles.body}>
+          <MarkdownContent markdown={content} />
+        </div>
 
-      <section aria-label="Choices">
-        <h2>Choices</h2>
-        {choices.length === 0 ? (
-          <p>No choices yet — be the first to continue this story.</p>
-        ) : (
-          <ul>
-            {choices.map((choice) => (
-              <li key={choice.id}>
-                <Link href={`/stories/${storyId}/chapters/${choice.id}`}>{choice.title}</Link>{' '}
-                <span>
-                  {choice.likeCount} {choice.likeCount === 1 ? 'like' : 'likes'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link href={`/stories/${storyId}/chapters/${chapterId}/new`}>Add a chapter</Link>
-      </section>
+        <section aria-label="Reactions" className={styles.reactions}>
+          <p className={styles.likeCount}>
+            Liked by {likeCount} {likeCount === 1 ? 'reader' : 'readers'}
+          </p>
+          {isSignedIn ? (
+            <form action={likeChapterAction.bind(null, chapterId, storyId)}>
+              <button type="submit" className={`btn ${styles.likeButton}`} disabled={viewerHasLiked}>
+                {viewerHasLiked ? 'Liked' : 'Like'}
+              </button>
+            </form>
+          ) : (
+            <Link href="/auth/sign-in">Sign in to like</Link>
+          )}
+          {isSignedIn ? <ReportChapter chapterId={chapterId} /> : null}
+        </section>
+
+        <section aria-label="Choices" className={styles.choices}>
+          <h2>Choices</h2>
+          {choices.length === 0 ? (
+            <p className={styles.empty}>No choices yet — be the first to continue this story.</p>
+          ) : (
+            <ul className={styles.choiceList}>
+              {choices.map((choice) => (
+                <li key={choice.id} className={styles.choiceCard}>
+                  <Link href={`/stories/${storyId}/chapters/${choice.id}`} className={styles.choiceTitle}>
+                    {choice.title}
+                  </Link>
+                  <span className={styles.choiceLikes}>
+                    {choice.likeCount} {choice.likeCount === 1 ? 'like' : 'likes'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link href={`/stories/${storyId}/chapters/${chapterId}/new`} className={`btn btn--secondary ${styles.addChapter}`}>
+            Add a chapter
+          </Link>
+        </section>
+      </article>
     </main>
   );
 }
