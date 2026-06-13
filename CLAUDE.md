@@ -16,7 +16,7 @@ Active development happens on the **`develop`** branch; `main` holds the design 
 
 **Standing authorization:** commit and push to `develop` regularly without asking first — checkpoint working increments as you go (ideally with `npm test` green). Still ask before anything that rewrites shared history (force-push, rebase of pushed commits) or touches `main`.
 
-Implementation is in progress — roughly through plan Task 2: app scaffold, Prisma data model, chapter domain helpers, and the Vitest DB harness. Later tasks (auth, rich-text validation, writing flow, reader/feed, likes/reports/admin) are planned but **not yet built** — do not assume Auth.js, Tiptap, Zod, or bcryptjs exist until they appear in `package.json`.
+Implementation is in progress — through plan **Task 5**: app scaffold, Prisma data model + domain helpers, the Vitest DB harness, Auth.js credentials auth, Markdown content + server-side validation, and the story/child-chapter writing flow with a minimal chapter reader. **Still to build:** the homepage recent-chapters feed and full story-overview page (Task 6), likes/reports/admin removal (Task 7), and final full-journey e2e + seed + README (Task 8). Note the stack diverged from the plan: content is **Markdown** (not Tiptap/JSON), and **Volta** pins Node — see below.
 
 ## Commands
 

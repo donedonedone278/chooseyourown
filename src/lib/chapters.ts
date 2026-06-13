@@ -52,3 +52,20 @@ export async function createChildChapter(input: {
     }
   });
 }
+
+/**
+ * Load a chapter (if not soft-deleted) with its story and its non-deleted child
+ * chapters. Choices render in creation order so the UI is stable as likes change.
+ */
+export async function getChapterWithChoices(chapterId: string) {
+  return db.chapter.findFirst({
+    where: { id: chapterId, deletedAt: null },
+    include: {
+      story: true,
+      childChapters: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'asc' }
+      }
+    }
+  });
+}
