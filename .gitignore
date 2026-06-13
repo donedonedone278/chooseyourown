@@ -1,1 +1,7 @@
 .worktrees/
+.next/
+node_modules/
+test-results/
+next-dev.log
+.local-libs/
+*.deb
