@@ -1,15 +1,4 @@
-import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
-
-const localLibraryPath = path.join(
-  process.cwd(),
-  '.local-libs/usr/lib/x86_64-linux-gnu'
-);
-
-process.env.LD_LIBRARY_PATH = [
-  localLibraryPath,
-  process.env.LD_LIBRARY_PATH
-].filter(Boolean).join(':');
 
 export default defineConfig({
   testDir: './tests/e2e',
