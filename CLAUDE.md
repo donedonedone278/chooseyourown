@@ -36,12 +36,17 @@ plan: chapter content is **Markdown** (not Tiptap/JSON), and **Volta** pins Node
 5. **Only then merge to `develop` and push `develop`** (`git checkout develop && git merge --no-ff <branch>` then push).
 
 **Authorization:** commit freely *on the feature branch* to checkpoint progress without
-asking. **Do not merge into `develop` without explicit user approval.** Trivial chores or
-doc-only fixes may go straight to `develop`. Always ask before touching `main` or
-rewriting shared history (force-push, rebase of pushed commits).
+asking. **Do not merge into `develop` without explicit user approval.** Always ask before
+touching `main` or rewriting shared history (force-push, rebase of pushed commits).
 
-After building **and** testing a user-facing change, expose it for phone testing per the
-"Development loop" below — don't wait to be asked.
+**Doc/procedure changes discovered while working on a feature ride on that feature branch**
+— don't split them into a separate `develop` commit; they travel with the work that
+surfaced them. (Standalone doc chores unrelated to active feature work may still go straight
+to `develop`.) And when we hit a flaw in our own process, **fix the procedure here, don't
+work around it** — otherwise we re-hit it every time.
+
+Once the subagent returns green, the **main session** (not the subagent) exposes the change
+for phone testing per the "Development loop" below — don't wait to be asked.
 
 ## Commands
 
@@ -72,14 +77,20 @@ npx playwright test tests/e2e/home.spec.ts --project=chromium
 
 ## Development loop (do this without being asked)
 
-After building **and** testing a user-facing feature (i.e. once `npm test` is green),
-make it pokeable from the user's phone and hand them the URL — this is the standing
-workflow, not something to wait for a reminder on:
+After a user-facing change is built **and** `npm test` is green, make it pokeable from the
+user's phone and hand them the URL — standing workflow, not something to wait for a reminder on.
 
-1. Run `npm run dev:phone` **in the background** (it binds `0.0.0.0` and prints the
-   `http://<LAN-IP>:3000` phone URL). One already-running instance is fine — don't stack
-   duplicates; reuse it.
-2. Tell the user the phone URL and a one-line "what to try" for the feature you just built.
+**The orchestrator (main session) runs `npm run dev:phone`, never an implementing subagent.**
+A subagent's background processes are killed when its turn ends, so a `dev:phone` it starts
+is dead before the user can look. The main session's background process persists across
+turns, and the main session can relaunch it if it's ever cleaned up between turns. So:
+
+1. When the implementing subagent reports `npm test` green, the **main session** starts (or
+   reuses) `npm run dev:phone` in the background — it binds `0.0.0.0` and prints the
+   `http://<LAN-IP>:3000` URL. Don't stack duplicates; reuse a running one. Do **not**
+   instruct the subagent to start it.
+2. Hand the user the phone URL and a one-line "what to try." If the preview was cleaned up
+   between turns and the user is (or may be) looking, just relaunch it.
 
 `npm run dev:phone` is the only command needed; LAN port-forwarding (WSL2 → Windows → wifi)
 is kept current by a Windows logon task. See `scripts/README.md` for the full setup
