@@ -57,9 +57,11 @@ workflow, not something to wait for a reminder on:
 2. Tell the user the phone URL and a one-line "what to try" for the feature you just built.
 
 `npm run dev:phone` is the only command needed; LAN port-forwarding (WSL2 → Windows → wifi)
-is kept current by a Windows logon task. See `scripts/README.md` for the full setup and
-the one-time `scripts/windows/wsl-port-forward-setup.ps1` (elevated) if forwarding is ever
-missing. Don't put multi-step `&&` command chains in docs — add a script under `scripts/`
+is kept current by a Windows logon task. See `scripts/README.md` for the full setup
+(`scripts/windows/wsl-port-forward-setup.ps1`, elevated), a complete inventory of the
+Windows-side artifacts it creates, and the one-shot teardown
+(`scripts/windows/wsl-port-forward-teardown.ps1`) for when the user asks to fully remove
+LAN access. Don't put multi-step `&&` command chains in docs — add a script under `scripts/`
 (and an npm alias) instead, the way `dev:phone` and `npm test` already are.
 
 ## Architecture

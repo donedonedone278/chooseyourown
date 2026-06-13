@@ -10,38 +10,88 @@ the `http://<windows-LAN-IP>:3000` URL to open on a phone on the same wifi. Also
 sanity-checks the Windows port-forward and warns if it's stale or missing. This is the
 standard way to run the app for phone testing — `npm run dev` stays localhost-only.
 
-## LAN access from a phone (one-time Windows setup)
+---
+
+# LAN access from a phone (WSL2)
 
 The phone reaches the WSL2 dev server through two hops: **WSL2 → Windows** (the server
 binds `0.0.0.0`, handled by `dev:phone`) and **Windows → phone** (a Windows `portproxy`
 + firewall rule forwarding the LAN port into the WSL2 VM). WSL2's internal IP changes on
-every restart, so the forward is re-applied automatically at each Windows logon.
+every restart, so the forward is re-applied automatically at each Windows logon by a
+scheduled task.
 
-The two PowerShell scripts here are the version-controlled source of truth. The **active
-copies run from the Windows user profile** (`C:\Users\<you>\`), not from this repo —
-running a `.ps1` off the WSL filesystem at logon is unreliable (WSL may not be up yet).
+> **Scope/assumptions:** trusted home wifi, all users trusted, plain HTTP (no TLS).
+> `src/lib/auth.ts` already set `trustHost: true` and cookies aren't `Secure`-flagged, so
+> auth works over LAN HTTP **with no app-code change** — nothing in `src/` was modified
+> for this. Don't use it on an untrusted network.
 
-**Install once** (copy to the Windows profile, then run elevated):
+## Exactly what this creates (the removal inventory)
+
+This is the complete list of state the setup touches, so it can be fully reversed. Three
+items live **on Windows, outside this repo** — a `git rm` will *not* remove them; use the
+teardown script (below) for those.
+
+| # | Artifact | Location | Removed by |
+|---|----------|----------|------------|
+| 1 | Scheduled task `WSL Port Forward 3000` | Windows Task Scheduler | teardown script |
+| 2 | `portproxy` rule `0.0.0.0:3000 → <wsl-ip>:3000` | Windows `netsh` | teardown script |
+| 3 | Firewall rule `WSL dev:3000` (inbound TCP 3000) | Windows Defender Firewall | teardown script |
+| 4 | `wsl-port-forward.ps1`, `wsl-port-forward-setup.ps1` | `C:\Users\<you>\` (Windows profile) | teardown script |
+| 5 | `scripts/windows/*.ps1` (version-controlled source) | this repo | `git rm` |
+| 6 | `scripts/dev-phone.sh` + `"dev:phone"` script in `package.json` | this repo | `git rm` / edit |
+
+Items 1–4 are created by running `wsl-port-forward-setup.ps1`. Item 4 is **copied into
+the Windows profile on purpose** — running a `.ps1` off the WSL filesystem at logon is
+unreliable (WSL may not be up yet), so the profile copies are the *active* ones and
+`scripts/windows/` is the version-controlled source of truth.
+
+## Install (one time)
+
+From an **elevated** PowerShell on Windows (paths use the `Ubuntu` distro):
 
 ```powershell
-# From an elevated PowerShell on Windows:
-Copy-Item \\wsl$\Ubuntu\home\<you>\repos\chooseyourown\scripts\windows\*.ps1 $env:USERPROFILE\
+Copy-Item \\wsl.localhost\Ubuntu\home\<you>\repos\chooseyourown\scripts\windows\wsl-port-forward*.ps1 $env:USERPROFILE\
 & "$env:USERPROFILE\wsl-port-forward-setup.ps1"
 ```
 
-- `wsl-port-forward.ps1` — detects the current WSL2 IP and (re)applies the
-  `portproxy` + firewall rule for port 3000. Idempotent; safe to re-run.
-- `wsl-port-forward-setup.ps1` — registers a logon scheduled task that runs the above
-  (elevated, no recurring UAC prompt), then runs it once immediately.
+(`\\wsl$\Ubuntu\...` is the older alias for the same path.)
 
-**Teardown:**
+- `wsl-port-forward.ps1` — detects the current WSL2 IP and (re)applies items 2 & 3.
+  Idempotent; safe to re-run. This is what the logon task runs.
+- `wsl-port-forward-setup.ps1` — registers the logon task (item 1, elevated so no
+  recurring UAC prompt) and runs the forward once immediately.
+
+## Full removal / "delete it one day"
+
+**Step 1 — remove the Windows state (items 1–4).** From an **elevated** PowerShell, run
+the teardown script (idempotent — safe even if pieces are already gone):
 
 ```powershell
-Unregister-ScheduledTask -TaskName 'WSL Port Forward 3000' -Confirm:$false
-netsh interface portproxy delete v4tov4 listenport=3000 listenaddress=0.0.0.0
-Remove-NetFirewallRule -DisplayName 'WSL dev:3000'
+powershell -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu\home\<you>\repos\chooseyourown\scripts\windows\wsl-port-forward-teardown.ps1
 ```
 
-> Assumptions: home wifi, all users trusted, plain HTTP (no TLS). `src/lib/auth.ts` sets
-> `trustHost: true` and cookies aren't `Secure`-flagged, so auth works over LAN HTTP.
-> Don't use this on an untrusted network.
+It unregisters the scheduled task, deletes the portproxy + firewall rules, and removes
+the two profile `.ps1` copies, printing each step. (Pass `-Port <n>` if you ever used a
+non-default port.)
+
+**Step 2 — remove the repo pieces (items 5–6), if you want them gone too:**
+
+```bash
+git rm -r scripts/windows
+git rm scripts/dev-phone.sh
+# then drop the "dev:phone" line from package.json's "scripts", and the
+# phone-testing notes from README.md / CLAUDE.md
+```
+
+Nothing in `src/` needs reverting — LAN access was purely tooling + Windows config.
+
+**Verify it's gone** (PowerShell — all three should report nothing / not found):
+
+```powershell
+Get-ScheduledTask -TaskName 'WSL Port Forward 3000' -ErrorAction SilentlyContinue
+netsh interface portproxy show v4tov4        # no 0.0.0.0:3000 line
+Get-NetFirewallRule -DisplayName 'WSL dev:3000' -ErrorAction SilentlyContinue
+```
+
+> Just want to pause phone access without uninstalling? Run `npm run dev` (localhost
+> only) instead of `npm run dev:phone`. The forward stays configured but unused.
