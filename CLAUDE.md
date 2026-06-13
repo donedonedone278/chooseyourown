@@ -67,6 +67,8 @@ npx playwright test tests/e2e/home.spec.ts --project=chromium
 - **Vitest** (`vitest.config.ts`): node environment, `fileParallelism: false` (tests share one SQLite DB, so they run serially). `src/test/global-setup.ts` sets `DATABASE_URL` to `file:./test.db` and runs `prisma db push --skip-generate` before the suite. Include globs cover `src/**/*.test.ts(x)` and `tests/unit/**`; e2e is excluded.
 - Use the factories in `src/test/factories.ts` (`createUser`, `createStory`, `createChapter`) for test data — they upsert authors and generate unique fields, so don't hand-roll Prisma inserts in tests.
 - **Playwright** (`playwright.config.ts`): chromium only, baseURL `http://127.0.0.1:3000`, auto-starts `npm run dev` and reuses an existing server. The plan treats browser coverage as first-class — new user-facing features should land with an e2e spec.
+- **Scope e2e queries to a landmark region** (`page.locator('header' | 'main' | 'nav').getByRole(...)`) rather than querying the whole page. This is the standing convention — it makes assertions intention-revealing and avoids strict-mode collisions when the same accessible name legitimately appears in nav and page content. Don't give two interactive elements the same accessible name *and* destination; differentiate the copy instead (e.g. nav "Start a story" vs homepage hero "Write the first chapter").
+- E2e tests that create rows in the shared dev db must use unique inputs per run (e.g. `avery-${Date.now()}@example.com`) so they stay repeatable; there is no per-test db reset for the browser suite yet.
 - The plan is strictly **test-first**: write the failing test, confirm it fails, implement, confirm it passes, then commit. Follow that rhythm when continuing the plan.
 
 ## Environment
