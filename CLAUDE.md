@@ -6,17 +6,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A collaborative, branching choose-your-own-adventure website. Signed-in users start stories and extend them by adding child chapters; readers discover fresh chapters from a global feed and navigate stories chapter-by-chapter, choosing among child chapters at the end of each one. Chapters carry per-user likes and can be reported for later admin removal.
 
-Authoritative scope and design live in `docs/superpowers/`:
-- `specs/2026-06-12-choose-your-own-adventure-design.md` — product/design spec (the source of truth for behavior and non-goals).
-- `plans/2026-06-12-choose-your-own-adventure.md` — the 8-task, TDD-driven implementation plan. Read this before adding features; it dictates file layout, the tech stack, and the test-first workflow.
+The original product/design spec and the 8-task implementation plan are **complete** and
+have been archived **outside the repo** at `../oldplans/chooseyourown/` (the
+`2026-06-12-*` files). They're kept for history but deliberately out of tree — completed
+plans/designs tend to confuse new agents. Don't treat them as current scope; this
+`CLAUDE.md` and the code are the source of truth now.
 
-## Branches and current state
+## Current state
 
-Active development happens on the **`develop`** branch; `main` holds the design docs and is the eventual integration target. Commit feature work to `develop`.
+The MVP is **complete** (original plan Tasks 1–8): app scaffold; Prisma data model +
+domain helpers; the Vitest DB harness; Auth.js credentials auth + route protection;
+Markdown content with server-side validation; the story / child-chapter writing flow;
+the chapter reader (choices show like counts); the homepage recent-chapters feed; the
+story-overview page; per-user likes; reporting + the admin removal surface
+(`/admin/reports`); and full-journey e2e + seed + README. Stack divergences from the old
+plan: chapter content is **Markdown** (not Tiptap/JSON), and **Volta** pins Node (see
+"Environment"). `npm test` is green.
 
-**Standing authorization:** commit and push to `develop` regularly without asking first — checkpoint working increments as you go (ideally with `npm test` green). Still ask before anything that rewrites shared history (force-push, rebase of pushed commits) or touches `main`.
+## Branches and workflow
 
-Implementation is in progress — through plan **Task 6**: app scaffold, Prisma data model + domain helpers, the Vitest DB harness, Auth.js credentials auth, Markdown content + server-side validation, the story/child-chapter writing flow, the chapter reader (choices show like counts), the homepage recent-chapters feed, and the story-overview page. **Still to build:** likes/reports/admin removal (Task 7 — the reader shows like *counts* but there's no way to like yet), and final full-journey e2e + seed + README (Task 8). Note the stack diverged from the plan: content is **Markdown** (not Tiptap/JSON), and **Volta** pins Node — see below.
+`develop` is the active integration branch; `main` is the eventual release target.
+
+**For every enhancement or feature, follow this loop:**
+1. **Branch from `develop`** — e.g. `feat/<short-name>` or `fix/<short-name>`.
+2. **Write a plan** for the change (an implementation plan an agent can execute), normally
+   into `tasks/todo.md`.
+3. **Have Sonnet implement the plan** (subagent), strictly test-first, until `npm test` is green.
+4. **Get the user's approval** of the result.
+5. **Only then merge to `develop` and push `develop`** (`git checkout develop && git merge --no-ff <branch>` then push).
+
+**Authorization:** commit freely *on the feature branch* to checkpoint progress without
+asking. **Do not merge into `develop` without explicit user approval.** Trivial chores or
+doc-only fixes may go straight to `develop`. Always ask before touching `main` or
+rewriting shared history (force-push, rebase of pushed commits).
+
+After building **and** testing a user-facing change, expose it for phone testing per the
+"Development loop" below — don't wait to be asked.
 
 ## Commands
 

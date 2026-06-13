@@ -6,8 +6,9 @@ a global feed and navigate stories chapter-by-chapter, choosing among child chap
 the end of each one. Chapters carry per-user likes and can be reported for later admin
 removal.
 
-For product/design rationale and the implementation plan, see `CLAUDE.md` and
-`docs/superpowers/`.
+For architecture and contributor guidance, see `CLAUDE.md`. The original (now complete)
+design spec and implementation plan are archived outside the repo at
+`../oldplans/chooseyourown/`.
 
 ## Local setup
 
@@ -69,4 +70,5 @@ task) — see `scripts/README.md`. Intended for a trusted home network over plai
 | Server-rendered & full flows | Playwright | server components, auth, end-to-end journeys |
 
 See `CLAUDE.md` for conventions (test factories, selector scoping, unique test inputs,
-the test-first workflow) and `docs/superpowers/` for the original design/plan docs.
+the test-first workflow). The original design/plan docs are archived at
+`../oldplans/chooseyourown/`.
