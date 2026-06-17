@@ -1,0 +1,20 @@
+.shell {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  transition: transform 0.25s ease;
+}
+
+.shell.hidden {
+  transform: translateY(-100%);
+}
+
+.shell:focus-within {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell {
+    transition: none;
+  }
+}

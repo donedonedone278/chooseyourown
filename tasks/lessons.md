@@ -2,6 +2,14 @@
 
 Patterns to repeat / mistakes not to repeat. Review at session start.
 
+## Reset tasks/todo.md after each merge (2026-06-13)
+
+**Correction:** Finished plan + Review notes lingered in `tasks/todo.md` into the next cycle
+and confused the picture. After a feature merges to `develop`, reset `tasks/todo.md` to the
+empty working-slot placeholder. It holds only the *current* feature's plan; the durable
+record lives in `tasks/lessons.md` (and merged code/commits). Now step 6 of the loop in
+`CLAUDE.md` → "Branches and workflow."
+
 ## Fix the procedure, don't work around recurring flaws (2026-06-13)
 
 **Correction:** When a step in our own process keeps biting us, update the documented

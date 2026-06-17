@@ -70,6 +70,7 @@
 }
 
 .choiceCard {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -80,6 +81,7 @@
   box-shadow: var(--shadow);
   padding: var(--space-3) var(--space-4);
   transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
 }
 
 .choiceCard:hover {
@@ -99,7 +101,15 @@
   color: var(--accent);
 }
 
+.choiceTitle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
 .choiceLikes {
+  position: relative;
+  z-index: 1;
   font-family: var(--font-sans);
   font-size: 0.85rem;
   color: var(--text-muted);
