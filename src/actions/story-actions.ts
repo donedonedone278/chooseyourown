@@ -11,6 +11,8 @@ export async function createStory(formData: FormData) {
   const storyTitle = String(formData.get('storyTitle') ?? '').trim();
   const chapterTitle = String(formData.get('title') ?? '').trim();
   const content = validateChapterContent(formData.get('content'));
+  const tagPermissionRaw = String(formData.get('tagPermission') ?? 'crowd');
+  const tagPermission = tagPermissionRaw === 'author' ? 'author' : 'crowd';
 
   if (!storyTitle || !chapterTitle) {
     throw new Error('Story title and chapter title are required.');
@@ -20,7 +22,8 @@ export async function createStory(formData: FormData) {
     title: storyTitle,
     authorId: session.user.id,
     chapterTitle,
-    content
+    content,
+    tagPermission
   });
 
   redirect(`/stories/${story.id}/chapters/${story.rootChapterId}`);

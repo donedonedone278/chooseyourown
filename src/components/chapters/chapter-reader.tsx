@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { likeChapterAction } from '@/actions/chapter-actions';
+import { ChapterTags, type ChapterTagView } from '@/components/chapters/chapter-tags';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
 import { ReportChapter } from '@/components/chapters/report-chapter';
 import styles from './chapter-reader.module.css';
@@ -16,7 +17,10 @@ export function ChapterReader({
   choices,
   likeCount,
   viewerHasLiked,
-  isSignedIn
+  isSignedIn,
+  tags,
+  canAddTags,
+  canRemoveTags
 }: {
   storyId: string;
   chapterId: string;
@@ -27,6 +31,9 @@ export function ChapterReader({
   likeCount: number;
   viewerHasLiked: boolean;
   isSignedIn: boolean;
+  tags: ChapterTagView[];
+  canAddTags: boolean;
+  canRemoveTags: boolean;
 }) {
   return (
     <main>
@@ -38,6 +45,14 @@ export function ChapterReader({
         <div className={styles.body}>
           <MarkdownContent markdown={content} />
         </div>
+
+        <ChapterTags
+          storyId={storyId}
+          chapterId={chapterId}
+          tags={tags}
+          canAdd={canAddTags}
+          canRemove={canRemoveTags}
+        />
 
         <section aria-label="Reactions" className={styles.reactions}>
           <p className={styles.likeCount}>
