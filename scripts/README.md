@@ -60,10 +60,13 @@ From an **elevated** PowerShell on Windows (paths use the `Ubuntu` distro):
 
 ```powershell
 Copy-Item \\wsl.localhost\Ubuntu\home\<you>\repos\chooseyourown\scripts\windows\wsl-port-forward*.ps1 $env:USERPROFILE\
-& "$env:USERPROFILE\wsl-port-forward-setup.ps1"
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\wsl-port-forward-setup.ps1"
 ```
 
-(`\\wsl$\Ubuntu\...` is the older alias for the same path.)
+(`\\wsl$\Ubuntu\...` is the older alias for the same path.) The `-ExecutionPolicy
+Bypass` form runs the copied script without tripping the default machine policy
+(`running scripts is disabled on this system`); a bare `& "...\setup.ps1"` fails there.
+Same reason the teardown command below uses it.
 
 - `wsl-port-forward.ps1` — detects the current WSL2 IP and (re)applies items 2 & 3.
   Idempotent; safe to re-run. This is what the logon task runs.
