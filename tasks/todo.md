@@ -130,6 +130,64 @@ Commit on the branch with a clear message. **Do NOT merge to `develop`, do NOT s
 `src/components/chapters/chapter-reader.tsx` (mount tag display), `src/app/stories/new/*`
 (tagPermission choice), `src/lib/stories.ts` (include `tagPermission` where the story is loaded).
 
-## Review (fill in after implementation)
+## Review (filled in after implementation)
 
-_(empty)_
+**Summary:** Built the tagging foundation per plan, strictly test-first, two commits on
+`feat/tagging-system`. `npm test` is fully green (lint, typecheck, 8 unit/jsdom test files /
+37 tests, 10 e2e tests).
+
+**Per item:**
+- **Schema** (`prisma/schema.prisma`): added `Tag`, `ChapterTag` (unique on
+  `[chapterId, tagId]`), `Story.tagPermission` (default `"crowd"`), back-relations on
+  `Chapter`/`User`. Applied via `npx prisma db push && npx prisma generate`.
+- **`src/lib/tags.ts`**: `normalizeTagName`, `addTagToChapter` (permission enforcement,
+  find-or-create via `tag.upsert`, P2002 → "already tagged" domain error),
+  `removeTagFromChapter` (author or admin only), `getChapterTags` (official-first then
+  alpha), `getStoryTopTags` (in-memory aggregation over non-deleted chapters, top-K,
+  alpha tiebreak), `suggestTags` (prefix match, official-first).
+- **Seed** (`prisma/seed.ts`): idempotent upsert of the 6 curated tags from the plan
+  (horror→Skull, romance→Heart, mystery→Search, comedy→Laugh, fantasy→Wand, sci-fi→Rocket).
+- **Server actions**: plan named `src/lib/tag-actions.ts`, but the repo's actual convention
+  (confirmed against `auth-actions.ts`, `chapter-actions.ts`, `story-actions.ts`,
+  `report-actions.ts`) is `src/actions/*-actions.ts`, not `src/lib/`. Followed the real
+  convention: `src/actions/tag-actions.ts` with `addChapterTagAction`,
+  `removeChapterTagAction`, and an added `suggestTagsAction` (needed by the autocomplete UI,
+  not explicitly named in the plan but implied by "suggestTags autocomplete" in the UI spec).
+- **UI**: `src/components/chapters/chapter-tags.tsx` — official tags render a lucide glyph
+  (local `ICONS` map keyed by the seeded icon name, per "Out of scope" guidance to use a
+  minimal local mapping for now) + label; custom tags render as plain chips; add input +
+  autocomplete shown only when `canAdd`; remove (×) shown only when `canRemove`. Mounted in
+  `ChapterReader`, with `canAddTags`/`canRemoveTags` computed server-side in the chapter page
+  from session + `story.tagPermission` + chapter authorship/admin.
+- **Story creation form**: added a "Who can tag chapters?" radio group (Anyone / Only me,
+  default Anyone) to `ChapterForm` (only shown when `includeStoryTitle`, i.e. only on the
+  story-creation use of the shared form), threaded through `createStory` action →
+  `createStoryWithRootChapter` → `Story.tagPermission`.
+
+**Deviations from the plan:**
+1. Action file location: `src/actions/tag-actions.ts` instead of `src/lib/tag-actions.ts` —
+   matches actual repo structure (all other `*-actions.ts` files live in `src/actions/`, not
+   `src/lib/`; `src/lib/` holds pure domain/db helpers only). Noted as the most reasonable
+   choice consistent with existing conventions.
+2. e2e glyph assertion: the plan's e2e bullet says "official tag shows its glyph," but
+   official tags only exist after `prisma db seed` has been run, and no other e2e spec in
+   this repo depends on seeded data (e2e relies on the shared dev db with no auto-seed step
+   in `npm test`/`playwright.config.ts`). Asserting on a seeded official tag would make the
+   suite fail on a freshly-provisioned dev db. Resolved by: (a) covering the official-glyph
+   render path at the component level instead (`chapter-tags.test.tsx`, which directly passes
+   an `isOfficial: true` tag with an icon and asserts an `<svg>` renders), and (b) using a
+   custom tag in the e2e spec to exercise the real add/permission flow without the seed
+   dependency. I did run `prisma db seed` against the local `dev.db` as part of getting
+   `npm test` green here (harmless, idempotent), but the suite no longer requires it.
+3. Added `suggestTagsAction` (not explicitly in the "Server actions" plan section) since the
+   UI spec requires `suggestTags` autocomplete and client components can't call `src/lib/*`
+   server-only-adjacent helpers directly — needed a thin auth-guarded action wrapper.
+
+**Out of scope, confirmed not built:** tag rendering on choice cards/feed/search, editing
+`tagPermission` after story creation, tag reporting/moderation, the shared `<Stat>` icon
+component (used the local `ICONS` map instead, as instructed).
+
+**Final gate:** `npm test` → lint clean, typecheck clean, unit **37/37 passed** (8 files),
+e2e **10/10 passed** (8 pre-existing specs + 2 new in `tests/e2e/tagging.spec.ts`).
+
+**Not done (per hard constraints):** no merge to `develop`, no push, no `dev:phone` started.
