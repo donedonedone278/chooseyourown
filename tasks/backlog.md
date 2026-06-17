@@ -274,7 +274,33 @@ preferences (theme, notification prefs if those ever land, etc.).
 name change? the per-story/chapter collaboration defaults from Q5?)? does hiding likes also
 hide them from the per-chapter like *count*, or only from the profile list?
 **Sketch / notes:** small `User` settings fields (or a `UserSettings` row); start minimal
-with just `showLikes`. Establishes the settings page pattern.
+with just `showLikes`. Establishes the settings page pattern. **Now also hosts the tag
+blacklist + its display mode** (see "Tag blacklist" entry).
+
+## Tag blacklist (blur vs hide)  — _status: refining_
+**The idea:** "Users should be able to blacklist tags. In my user settings I should be able
+to pick whether I want chapters with blacklisted tags to be blurred (unreadable) but visible
+or completely invisible."
+**Why / value:** reader content control — avoid genres/themes you don't want to see.
+**Decided (2026-06-16):**
+- **One global display setting** ({blur, hide}) applied to *all* blacklisted tags (not
+  per-tag). A chapter triggers it if it carries **any** blacklisted tag.
+- **Blur = click-to-reveal** (soft gate: visible-but-guarded, shows which blacklisted tag
+  tripped it, reader can un-blur that chapter). Hide = chapter omitted.
+- Applies **everywhere** a chapter surfaces: home feed, option-select choices in the reader,
+  search results, profile chapter lists. One rule, all surfaces.
+**Open questions:**
+- **Dead-end risk (hide mode):** if every continuation of the current chapter is hidden, the
+  reader hits an apparent dead end. Lean: show a muted "N continuations hidden by your
+  filters" affordance (with a one-off reveal) so it never looks broken.
+- Default display mode for a newly blacklisted tag (blur, as the gentler default?).
+- Crowd-tagging interaction (Q4): blacklist status shifts as tags change; mis-tag/untag is
+  an evasion/abuse vector — does this raise the bar for tag moderation?
+- Does an enforced/hard ending or root chapter ever get hidden? (probably treated the same.)
+**Sketch / notes:** lives in the user-settings surface (signed-in only). Data:
+`BlacklistedTag(userId, tagId)` + a `blacklistMode` setting on the user. Filtering is a
+join against the viewer's blacklist on every chapter-listing query — coordinate with the
+feed/search/option-select queries so it's one shared helper, not bolted on per surface.
 
 ## UI convention: symbols over words  — _status: refining_
 **The idea:** "Generally we should favor symbols over words for some of this ui stuff — we
