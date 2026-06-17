@@ -28,6 +28,51 @@ feature branch and its execution plan goes in that branch's `tasks/todo.md`
 
 ---
 
+## Suggested build order (sequencing)
+
+_Ordered by dependency, not excitement. With two contributors, independent threads **within
+a wave** run in parallel — just coordinate so you don't both grab the same foundation. Each
+item graduates to its own `feat/<initials>-<name>` branch + `tasks/todo.md` plan when picked
+up. "Quick win" = small, low-merge-conflict, good for warming up the two-person workflow._
+
+**Wave 1 — foundations (most features hang off these; mutually independent → parallelizable):**
+- **Tagging system (3)** — biggest single unblocker: richer choice cards, feed enrichment,
+  search, tag blacklist, story tag inheritance. Bring **tag moderation** along (crowd-tagging
+  is the default → abuse surface).
+- **View + read tracking (2 + 14)** — one per-(viewer, chapter) mechanism (F3). Unblocks the
+  hot-score feed, read/unread marks, profile stats, and view counts on choice cards.
+- **Symbols-over-words infra (16)** — `lucide-react` + a shared `<Stat>` component. Small;
+  every visual feature reuses it, so land the convention early. *(Quick win.)*
+
+**Wave 2 — core reader/writer flow (coordinate: touches the reader/editor, conflict-prone):**
+- **Options-as-edges (4 + 9)** — split choice *label* from chapter *title*; suggested prompts
+  as unclaimed option slots. Restructures the choice model.
+- **Non-tree connections (7)** — navigation-edge link layer (shares choice rendering with 4).
+- **Terminal/ending chapters (6)** — small; badge + optional branch lock.
+- **Back-to-parent button (13)** — trivial, nearly standalone; drop in any time. *(Quick win.)*
+
+**Wave 3 — surfaces that compose the foundations:**
+- **Richer choice cards (5)** — tags + likes + views + descendant count + symbols + label.
+- **Home feed (10)** — hot-score + Newest tab + tag/like icons.
+- **Search (11)** — FTS5 over title/tags/body across stories/chapters/users.
+
+**Wave 4 — social + settings:**
+- **User settings surface (17)** — small; hosts show-likes + blacklist mode.
+- **Tag blacklist (18)** — needs tags (3) + settings (17).
+- **Follow (12)** — follow writers + stories; followed feed.
+- **User profiles (1)** — *basic* version (chapter lists) needs nothing new → early quick win;
+  *full* version (stats, follower counts, liked stories) needs 2, 12, 17.
+
+**Wave 5 — the heavy one (split into sub-branches):**
+- **Collaboration / revision history (8)** — revision storage → edit modes
+  (wiki/suggest/locked) → suggest+approve flow → history+restore UI. Sequence late, *or* start
+  the revision-storage substrate earlier since search reindex + edit history both want it.
+
+**Cross-cutting:** tags are load-bearing + abuse-sensitive → tag moderation matters more than
+it looks. The revision model underpins all collaboration. Profiles ship basic-then-enriched.
+
+---
+
 <!-- Splat ideas below this line. -->
 
 ## User profiles  — _status: refining_
