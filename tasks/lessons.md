@@ -86,3 +86,16 @@ feature was ever in flight. Both assumptions broke. Standing rules now:
 - **You approve and merge your own work** (local merge, no PR/cross-review gate); `develop →
   main` releases stay a single coordinated step. Full detail in `CLAUDE.md` → "Branches and
   workflow."
+
+## Never use git worktrees for implementation (2026-06-16)
+
+**Correction:** Launched the tagging-system implementation as a subagent with
+`isolation: worktree`. The user stopped it: we don't work in worktrees here. A worktree is a
+separate checkout that lacks `node_modules` (so `npm test` can't run without a fresh install),
+puts the agent on a throwaway branch, and forks the working tree away from the branch we
+actually want to build on — confusing for no benefit at our scale.
+
+**Rule:** Implement on the **normal feature branch in the main working tree**. The
+orchestrator checks out the feature branch, then launches the (non-isolated) Sonnet subagent,
+which shares that working tree. Never pass `isolation: worktree`. Baked into `CLAUDE.md` →
+"Branches and workflow," step 3.
