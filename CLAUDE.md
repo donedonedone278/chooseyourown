@@ -27,20 +27,38 @@ plan: chapter content is **Markdown** (not Tiptap/JSON), and **Volta** pins Node
 
 `develop` is the active integration branch; `main` is the eventual release target.
 
+**Two people contribute concurrently**, so `develop` moves under you — always treat
+`origin/develop` as the source of truth and re-sync before you branch and before you merge.
+Integration stays **local** (no PR flow): each contributor pulls `develop`, merges their
+own branch, and pushes.
+
 **For every enhancement or feature, follow this loop:**
-1. **Branch from `develop`** — e.g. `feat/<short-name>` or `fix/<short-name>`.
-2. **Write a plan** for the change (an implementation plan an agent can execute), normally
-   into `tasks/todo.md`.
+1. **Sync, then branch from `develop`** — `git checkout develop && git pull --ff-only`
+   first so you're not basing on a stale tree, then branch
+   `feat/<initials>-<short-name>` or `fix/<initials>-<short-name>` (initials prefix so two
+   contributors don't collide on the same branch name).
+2. **Write a plan** for the change (an implementation plan an agent can execute) into
+   `tasks/todo.md`. The plan lives **only on the feature branch** — see step 5; it never
+   reaches `develop`, so two in-flight features never fight over this file.
 3. **Have Sonnet implement the plan** (subagent), strictly test-first, until `npm test` is green.
-4. **Get the user's approval** of the result.
-5. **Only then merge to `develop` and push `develop`** (`git checkout develop && git merge --no-ff <branch>` then push).
-6. **Reset `tasks/todo.md` after the merge** — clear the finished plan + Review back to the
-   empty working-slot placeholder so stale notes don't leak into the next cycle. `tasks/todo.md`
-   holds only the *current* feature's plan; `tasks/lessons.md` is the durable record.
+4. **Get the user's approval** of the result. ("The user" = whichever contributor owns the
+   branch; you approve and merge your own work — there's no cross-review gate.)
+5. **Reset `tasks/todo.md` on the branch, then sync + merge + push:**
+   - First commit the `tasks/todo.md` reset to the empty working-slot placeholder **on the
+     feature branch** (clearing the finished plan + Review). This keeps the plan on the
+     branch and out of `develop` entirely — `develop`'s `tasks/todo.md` stays the
+     placeholder permanently, and concurrent merges never conflict on it. `tasks/todo.md`
+     holds only the *current* feature's plan; `tasks/lessons.md` is the durable record.
+   - Then `git checkout develop && git pull --ff-only` (pick up the other contributor's
+     merges), `git merge --no-ff <branch>`, run `npm test` once on the integrated result,
+     and `git push`. If the push is rejected as non-fast-forward, someone merged between
+     your pull and push — `git pull --ff-only` and re-push (don't force).
 
 **Authorization:** commit freely *on the feature branch* to checkpoint progress without
 asking. **Do not merge into `develop` without explicit user approval.** Always ask before
-touching `main` or rewriting shared history (force-push, rebase of pushed commits).
+touching `main` or rewriting shared history (force-push, rebase of pushed commits). Shipping
+`develop → main` is a single deliberate release step — coordinate it (don't let both
+contributors push `main` independently).
 
 **Doc/procedure changes discovered while working on a feature ride on that feature branch**
 — don't split them into a separate `develop` commit; they travel with the work that

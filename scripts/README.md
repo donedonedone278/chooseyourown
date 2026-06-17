@@ -20,6 +20,15 @@ binds `0.0.0.0`, handled by `dev:phone`) and **Windows → phone** (a Windows `p
 every restart, so the forward is re-applied automatically at each Windows logon by a
 scheduled task.
 
+> **Per-machine + WSL2-only.** This setup is local to each contributor's machine and
+> nothing here is shared or version-controlled beyond `scripts/`. The Windows `portproxy`
+> hop below applies **only on a Windows + WSL2 host** — each WSL2 contributor runs the
+> one-time install on their own machine (the Windows IP/WSL IP differ per machine, and the
+> default port 3000 doesn't collide across machines). A contributor on native
+> Linux/macOS doesn't need any of the Windows steps: `npm run dev:phone` already binds
+> `0.0.0.0`, so their phone reaches `http://<their-LAN-IP>:3000` directly once the host
+> firewall allows inbound 3000.
+
 > **Scope/assumptions:** trusted home wifi, all users trusted, plain HTTP (no TLS).
 > `src/lib/auth.ts` already set `trustHost: true` and cookies aren't `Secure`-flagged, so
 > auth works over LAN HTTP **with no app-code change** — nothing in `src/` was modified

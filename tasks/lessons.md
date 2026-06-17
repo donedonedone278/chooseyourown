@@ -1,14 +1,18 @@
 # Lessons
 
-Patterns to repeat / mistakes not to repeat. Review at session start.
+Patterns to repeat / mistakes not to repeat. Review at session start. **Append new lessons
+at the bottom** (newest last) — two contributors editing the same region collide; appending
+keeps merges trivial.
 
-## Reset tasks/todo.md after each merge (2026-06-13)
+## Reset tasks/todo.md to the placeholder before merging (2026-06-13, revised 2026-06-16)
 
 **Correction:** Finished plan + Review notes lingered in `tasks/todo.md` into the next cycle
-and confused the picture. After a feature merges to `develop`, reset `tasks/todo.md` to the
-empty working-slot placeholder. It holds only the *current* feature's plan; the durable
-record lives in `tasks/lessons.md` (and merged code/commits). Now step 6 of the loop in
-`CLAUDE.md` → "Branches and workflow."
+and confused the picture. Reset `tasks/todo.md` to the empty working-slot placeholder. It
+holds only the *current* feature's plan; the durable record lives in `tasks/lessons.md` (and
+merged code/commits). **Revised for two contributors:** reset *on the feature branch as the
+last commit before merging*, not after — so the plan never reaches `develop` at all,
+`develop`'s `tasks/todo.md` stays the placeholder permanently, and two concurrent merges
+never conflict on it. See `CLAUDE.md` → "Branches and workflow," step 5.
 
 ## Fix the procedure, don't work around recurring flaws (2026-06-13)
 
@@ -67,3 +71,18 @@ passes when run alone but fails in the full suite is almost always cross-worker 
 **Correction:** Don't leave `&&`-chained or flag-laden commands we run regularly sitting
 only in the docs. Put them in `scripts/` with an npm alias (e.g. `dev:phone`, like the
 existing `npm test`). Docs reference the script; the script is the source of truth.
+
+## Two contributors: sync before branch/merge; plan stays on the branch (2026-06-16)
+
+**Process change:** A second contributor joined, so `develop` now moves under us. Earlier
+workflow docs silently assumed local `develop` always equalled `origin/develop` and that one
+feature was ever in flight. Both assumptions broke. Standing rules now:
+- **Re-sync before branching and before merging** — `git checkout develop && git pull
+  --ff-only`. A rejected push means someone merged in between; pull and re-push, never force.
+- **Plan lives only on the feature branch** — reset `tasks/todo.md` to the placeholder *before*
+  merging (see revised entry above), so `develop` never carries a plan and concurrent merges
+  don't fight over the file.
+- **Branch names carry initials** (`feat/<initials>-<name>`) so two people don't collide.
+- **You approve and merge your own work** (local merge, no PR/cross-review gate); `develop →
+  main` releases stay a single coordinated step. Full detail in `CLAUDE.md` → "Branches and
+  workflow."
