@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 
 /** localStorage key for the logged-out read-state set (an array of chapter ids). */
 export const READ_CHAPTER_IDS_KEY = 'readChapterIds';
@@ -22,35 +22,38 @@ function saveReadIds(ids: Set<string>) {
 }
 
 /**
- * Client-side read-state enhancer for logged-out viewers. On mount, optionally
- * marks `markAsReadId` (the chapter currently being read) into the localStorage
- * set, then renders `children` with an `isRead` lookup so callers can decorate
- * choice/feed lists without server round-trips.
+ * Read-state lookup for logged-out viewers, backed by localStorage. Returns a
+ * `has(chapterId)` function that starts out reporting everything unread (server
+ * render / first paint) and updates once the client has read localStorage.
+ *
+ * Function props can't cross the server→client boundary, so this is a hook for
+ * client components to call directly rather than a render-prop wrapper around
+ * server-rendered markup.
  */
-export function ReadMarker({
-  markAsReadId,
-  children
-}: {
-  markAsReadId?: string;
-  children: (isRead: (chapterId: string) => boolean) => ReactNode;
-}) {
+export function useLocalReadIds(): { has: (chapterId: string) => boolean } {
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
+    setReadIds(loadReadIds());
+  }, []);
+
+  return { has: (chapterId: string) => readIds.has(chapterId) };
+}
+
+/**
+ * Marks `chapterId` as read in the logged-out localStorage set on mount.
+ * Renders nothing — drop it into a server-rendered chapter page alongside the
+ * rest of the markup. No-op for signed-in viewers, whose read-state lives in
+ * server `ChapterView` rows instead (see `getReadChapterIds`).
+ */
+export function MarkChapterRead({ chapterId }: { chapterId: string }) {
+  useEffect(() => {
     const current = loadReadIds();
-    if (markAsReadId && !current.has(markAsReadId)) {
-      current.add(markAsReadId);
+    if (!current.has(chapterId)) {
+      current.add(chapterId);
       saveReadIds(current);
     }
-    setReadIds(new Set(current));
-    // Only re-run when the chapter being marked changes; `chapterIds` is read
-    // fresh from state on every render via the `isRead` closure below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markAsReadId]);
+  }, [chapterId]);
 
-  function isRead(chapterId: string): boolean {
-    return readIds.has(chapterId);
-  }
-
-  return <>{children(isRead)}</>;
+  return null;
 }

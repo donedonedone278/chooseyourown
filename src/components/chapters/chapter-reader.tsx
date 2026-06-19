@@ -2,8 +2,9 @@ import Link from 'next/link';
 
 import { likeChapterAction } from '@/actions/chapter-actions';
 import { ChapterTags, type ChapterTagView } from '@/components/chapters/chapter-tags';
+import { ChoiceList } from '@/components/chapters/choice-list';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
-import { ReadMarker } from '@/components/chapters/read-marker';
+import { MarkChapterRead } from '@/components/chapters/read-marker';
 import { ReportChapter } from '@/components/chapters/report-chapter';
 import styles from './chapter-reader.module.css';
 
@@ -67,31 +68,14 @@ export function ChapterReader({
           )}
         </section>
 
+        {isSignedIn ? null : <MarkChapterRead chapterId={chapterId} />}
+
         <section aria-label="Choices" className={styles.choices}>
           <h2>Choices</h2>
           {choices.length === 0 ? (
             <p className={styles.empty}>No choices yet — be the first to continue this story.</p>
           ) : (
-            <ReadMarker markAsReadId={isSignedIn ? undefined : chapterId}>
-              {(isReadLocally) => (
-                <ul className={styles.choiceList}>
-                  {choices.map((choice) => {
-                    const read = isSignedIn ? choice.read : isReadLocally(choice.id);
-                    return (
-                      <li key={choice.id} className={styles.choiceCard}>
-                        <Link href={`/stories/${storyId}/chapters/${choice.id}`} className={styles.choiceTitle}>
-                          {choice.title}
-                        </Link>
-                        <span className={styles.choiceLikes}>
-                          {read ? 'Read · ' : ''}
-                          {choice.likeCount} {choice.likeCount === 1 ? 'like' : 'likes'}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </ReadMarker>
+            <ChoiceList storyId={storyId} choices={choices} isSignedIn={isSignedIn} />
           )}
           <Link href={`/stories/${storyId}/chapters/${chapterId}/new`} className={`btn btn--secondary ${styles.addChapter}`}>
             Add a chapter
