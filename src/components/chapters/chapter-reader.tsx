@@ -20,7 +20,7 @@ export function ChapterReader({
   likeCount,
   viewCount,
   viewerHasLiked,
-  isSignedIn,
+  userId,
   tags,
   canAddTags,
   canRemoveTags
@@ -34,11 +34,12 @@ export function ChapterReader({
   likeCount: number;
   viewCount: number;
   viewerHasLiked: boolean;
-  isSignedIn: boolean;
+  userId?: string | null;
   tags: ChapterTagView[];
   canAddTags: boolean;
   canRemoveTags: boolean;
 }) {
+  const isSignedIn = Boolean(userId);
   return (
     <main>
       <article className={styles.article}>
@@ -68,14 +69,14 @@ export function ChapterReader({
           )}
         </section>
 
-        {isSignedIn ? null : <MarkChapterRead chapterId={chapterId} />}
+        <MarkChapterRead chapterId={chapterId} userId={userId} />
 
         <section aria-label="Choices" className={styles.choices}>
           <h2>Choices</h2>
           {choices.length === 0 ? (
             <p className={styles.empty}>No choices yet — be the first to continue this story.</p>
           ) : (
-            <ChoiceList storyId={storyId} choices={choices} isSignedIn={isSignedIn} />
+            <ChoiceList storyId={storyId} choices={choices} userId={userId} />
           )}
           <Link href={`/stories/${storyId}/chapters/${chapterId}/new`} className={`btn btn--secondary ${styles.addChapter}`}>
             Add a chapter

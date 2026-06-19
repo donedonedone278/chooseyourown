@@ -143,6 +143,10 @@ LAN access. Don't put multi-step `&&` command chains in docs — add a script un
 
 **Ordering rule:** child-chapter choices render in creation order (`createdAt ASC`) so the UI stays stable as like counts change. Don't sort choices by likes.
 
+## UI principles
+
+**Visuals over words.** Prefer an intuitive visual signal — dimming, color, weight, iconography, position — over literal status text. A *read* chapter, for example, is shown by **dimming its card** (visited-link metaphor), not by printing the word "Read". This keeps the UI calm and scannable. Always pair the visual with a non-visual equivalent for accessibility (a `.sr-only` label, `aria-*`, or `title`) so screen-reader users aren't left out, and prefer a `data-*` hook over visible text when an e2e test needs to assert the state.
+
 ## Testing conventions
 
 Three test tiers — keep each one in its lane:

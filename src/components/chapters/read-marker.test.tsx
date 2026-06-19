@@ -1,15 +1,22 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 
 import {
   MarkChapterRead,
-  READ_CHAPTER_IDS_KEY,
+  readStorageKey,
   useLocalReadIds
 } from '@/components/chapters/read-marker';
 
-function ReadProbe({ ids }: { ids: string[] }) {
-  const { has } = useLocalReadIds();
+/** Dispatch a back/forward navigation event; jsdom lacks `PageTransitionEvent`. */
+function dispatchNav(type: 'popstate' | 'pageshow') {
+  act(() => {
+    window.dispatchEvent(new Event(type));
+  });
+}
+
+function ReadProbe({ ids, userId }: { ids: string[]; userId?: string | null }) {
+  const { has } = useLocalReadIds(userId);
   return (
     <ul>
       {ids.map((id) => (
@@ -27,7 +34,7 @@ describe('useLocalReadIds', () => {
   });
 
   it('reports ids found in localStorage as read and others as unread', async () => {
-    localStorage.setItem(READ_CHAPTER_IDS_KEY, JSON.stringify(['chapter-a', 'chapter-c']));
+    localStorage.setItem(readStorageKey(), JSON.stringify(['chapter-a', 'chapter-c']));
 
     render(<ReadProbe ids={['chapter-a', 'chapter-b', 'chapter-c']} />);
 
@@ -41,6 +48,36 @@ describe('useLocalReadIds', () => {
 
     await waitFor(() => expect(screen.getByTestId('chapter-a')).toHaveTextContent('unread'));
   });
+
+  it('namespaces the read set per user (one account does not see another’s reads)', async () => {
+    localStorage.setItem(readStorageKey('user-1'), JSON.stringify(['chapter-a']));
+
+    render(<ReadProbe ids={['chapter-a']} userId="user-2" />);
+
+    await waitFor(() => expect(screen.getByTestId('chapter-a')).toHaveTextContent('unread'));
+  });
+
+  it('re-reads localStorage on a soft Back (popstate) so a just-read chapter shows read', async () => {
+    render(<ReadProbe ids={['chapter-a']} />);
+    await waitFor(() => expect(screen.getByTestId('chapter-a')).toHaveTextContent('unread'));
+
+    // The chapter gets marked read while we're on its page, then a Next.js soft
+    // Back navigation (a `popstate`, not a fresh mount) returns us to the feed.
+    localStorage.setItem(readStorageKey(), JSON.stringify(['chapter-a']));
+    dispatchNav('popstate');
+
+    await waitFor(() => expect(screen.getByTestId('chapter-a')).toHaveTextContent('read'));
+  });
+
+  it('re-reads localStorage on a hard Back restore (pageshow / bfcache)', async () => {
+    render(<ReadProbe ids={['chapter-a']} />);
+    await waitFor(() => expect(screen.getByTestId('chapter-a')).toHaveTextContent('unread'));
+
+    localStorage.setItem(readStorageKey(), JSON.stringify(['chapter-a']));
+    dispatchNav('pageshow');
+
+    await waitFor(() => expect(screen.getByTestId('chapter-a')).toHaveTextContent('read'));
+  });
 });
 
 describe('MarkChapterRead', () => {
@@ -48,12 +85,22 @@ describe('MarkChapterRead', () => {
     localStorage.clear();
   });
 
-  it('adds the chapter id to the localStorage read set on mount', async () => {
+  it('adds the chapter id to the anonymous read set on mount', async () => {
     render(<MarkChapterRead chapterId="chapter-z" />);
 
     await waitFor(() => {
-      const stored = JSON.parse(localStorage.getItem(READ_CHAPTER_IDS_KEY) ?? '[]');
+      const stored = JSON.parse(localStorage.getItem(readStorageKey()) ?? '[]');
       expect(stored).toContain('chapter-z');
     });
+  });
+
+  it('writes to the per-user read set when a userId is given', async () => {
+    render(<MarkChapterRead chapterId="chapter-z" userId="user-1" />);
+
+    await waitFor(() => {
+      const stored = JSON.parse(localStorage.getItem(readStorageKey('user-1')) ?? '[]');
+      expect(stored).toContain('chapter-z');
+    });
+    expect(localStorage.getItem(readStorageKey())).toBeNull();
   });
 });

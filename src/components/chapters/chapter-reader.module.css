@@ -95,10 +95,33 @@
   cursor: pointer;
 }
 
-.choiceCard:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
-  border-color: var(--accent);
+/* Hover effects only where there's a real pointer. On touch (iOS Safari) `:hover`
+   "sticks" to the tapped card, so the option you just chose keeps looking lifted
+   and highlighted until you tap elsewhere. */
+@media (hover: hover) {
+  .choiceCard:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+    border-color: var(--accent);
+  }
+}
+
+/* Read choices fade back like a visited link. Keyboard focus brightens them so
+   they're legible when reached for; pointer hover does too, but only on real
+   pointers — a sticky touch `:hover` would otherwise leave the option you just
+   tapped un-dimmed (looking selected) until you tap away. */
+.read {
+  opacity: 0.55;
+}
+
+.read:has(:focus-visible) {
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .read:hover {
+    opacity: 1;
+  }
 }
 
 .choiceTitle {
@@ -108,8 +131,10 @@
   color: var(--text);
 }
 
-.choiceTitle:hover {
-  color: var(--accent);
+@media (hover: hover) {
+  .choiceTitle:hover {
+    color: var(--accent);
+  }
 }
 
 .choiceTitle::after {

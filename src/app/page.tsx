@@ -14,7 +14,7 @@ export default async function HomePage() {
   return (
     <RecentChapterFeed
       chapters={chapters.map((chapter) => ({ ...chapter, read: readChapterIds.has(chapter.id) }))}
-      isSignedIn={Boolean(userId)}
+      userId={userId ?? null}
     />
   );
 }

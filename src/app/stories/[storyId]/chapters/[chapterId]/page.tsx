@@ -53,7 +53,7 @@ export default async function ChapterPage({
       likeCount={chapter._count.likes}
       viewCount={viewCount}
       viewerHasLiked={viewerHasLiked}
-      isSignedIn={Boolean(userId)}
+      userId={userId ?? null}
       tags={tags}
       canAddTags={canAddTags}
       canRemoveTags={canRemoveTags}

@@ -8,32 +8,38 @@ import styles from './chapter-reader.module.css';
 export type ChoiceItem = { id: string; title: string; likeCount: number; read: boolean };
 
 /**
- * Renders the chapter's choice list with read flags. Signed-in read flags
- * come from the server (`choice.read`, sourced via `getReadChapterIds`);
- * logged-out viewers get their read flags from localStorage on the client.
+ * Renders the chapter's choice list with read flags. A choice is read if the
+ * server says so (`choice.read`, signed-in cross-device truth via
+ * `getReadChapterIds`) OR the local overlay does (instant client mark, also what
+ * keeps Back-navigation fresh). Read choices are dimmed (visited-link metaphor)
+ * rather than labelled with text — see the `.read` modifier.
  */
 export function ChoiceList({
   storyId,
   choices,
-  isSignedIn
+  userId
 }: {
   storyId: string;
   choices: ChoiceItem[];
-  isSignedIn: boolean;
+  userId?: string | null;
 }) {
-  const { has: isReadLocally } = useLocalReadIds();
+  const { has: isReadLocally } = useLocalReadIds(userId);
 
   return (
     <ul className={styles.choiceList}>
       {choices.map((choice) => {
-        const read = isSignedIn ? choice.read : isReadLocally(choice.id);
+        const read = choice.read || isReadLocally(choice.id);
         return (
-          <li key={choice.id} className={styles.choiceCard}>
+          <li
+            key={choice.id}
+            className={read ? `${styles.choiceCard} ${styles.read}` : styles.choiceCard}
+            data-read={read ? 'true' : undefined}
+          >
             <Link href={`/stories/${storyId}/chapters/${choice.id}`} className={styles.choiceTitle}>
               {choice.title}
             </Link>
             <span className={styles.choiceLikes}>
-              {read ? 'Read · ' : ''}
+              {read ? <span className="sr-only">Read. </span> : null}
               {choice.likeCount} {choice.likeCount === 1 ? 'like' : 'likes'}
             </span>
           </li>

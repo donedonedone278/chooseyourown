@@ -222,3 +222,110 @@ a same-context reload stays idempotent at "1 view", and the chapter shows "Read 
 **Verification:** cookieless `curl` repro now returns **HTTP 200** with no
 "Cookies can only be modified" string in the body. Full `npm test` (lint → typecheck → 49
 unit/component tests → 12 e2e specs, up from 11) is green.
+
+## Follow-up iteration (post-review polish) — visuals over words + bfcache fix
+
+User review of the working feature: (1) **visuals over words** — replace the literal
+"Read · " text with an *intuitive visual* read indicator; the chosen treatment is **dim the
+read card** (faded/muted, with hover + keyboard-focus restoring full contrast). (2) Bug:
+clicking a chapter then pressing **Back** doesn't show the chapter as read until a manual
+refresh — the browser serves the previous page from **bfcache** (a frozen snapshot), so the
+new read-state never appears. (3) Record the "visuals over words" principle in `CLAUDE.md`.
+
+### Plan
+
+1. **Visual read indicator (replace text):**
+   - `globals.css`: add a reusable `.sr-only` visually-hidden utility (a11y cue, since
+     dimming alone gives screen readers nothing).
+   - `feed-list.tsx` / `choice-list.tsx`: drop `{read ? 'Read · ' : ''}`. Add a `read`
+     modifier class on the card `<li>` when read, a `data-read` attribute for e2e targeting,
+     and a `<span className="sr-only">Read. </span>` for screen readers.
+   - `recent-chapter-feed.module.css` / `chapter-reader.module.css`: add a `.read` modifier
+     — `opacity: ~0.55`, restored to `1` on `:hover, :focus-within` so a read card is still
+     fully legible when you reach for it.
+2. **bfcache staleness fix (both viewer paths):**
+   - Logged-out (localStorage): `useLocalReadIds` currently reads localStorage once in a
+     mount effect; bfcache restore doesn't re-run effects. Add a `pageshow` listener that
+     re-reads localStorage, so a Back restore reflects the just-read chapter.
+   - Signed-in (server prop): the `read` flag is baked into server-rendered props and is
+     stale after a bfcache restore. Add `useRefreshOnBfcache(enabled)` (in `read-marker.tsx`)
+     that calls `router.refresh()` on `pageshow` when `event.persisted`; FeedList/ChoiceList
+     call it with `enabled={isSignedIn}` — no full reload, no flash.
+3. **`CLAUDE.md`:** add a short "UI principles → visuals over words" note (rides this branch
+   per the doc-changes-travel-with-the-feature rule).
+
+### Tests
+- `read-marker.test.tsx`: add a case that a `pageshow` event re-reads localStorage (set the
+  key after mount, dispatch `pageshow`, expect read). Add a case that `useRefreshOnBfcache`
+  calls `router.refresh()` only on a `persisted` pageshow (mock `next/navigation`).
+- `views-reads.spec.ts`: the two existing `getByText('Read · from …')` assertions no longer
+  match — retarget to the read card via `main li[data-read="true"]` filtered by story title.
+
+### Review
+
+Done; `npm test` green (lint → typecheck → **53** unit/component tests → **13** e2e specs).
+Two follow-up reports handled: the visual indicator, and a **re-diagnosis** of the back-button
+bug. Plus a seed of sample branching stories.
+
+**Visual read indicator (replaced text).** Dropped `{read ? 'Read · ' : ''}` from both
+`feed-list.tsx` and `choice-list.tsx`. Read cards now get a `.read` modifier
+(`opacity: 0.55`, restored to `1` on `:hover, :focus-within` so they stay legible when
+reached for) in `recent-chapter-feed.module.css` and `chapter-reader.module.css`. Each read
+card also carries a `data-read="true"` attribute (e2e hook) and a `<span class="sr-only">Read.
+</span>` (screen-reader cue) — the new `.sr-only` utility lives in `globals.css`.
+
+**Back-button staleness — re-diagnosed and properly fixed.** The first attempt (a `pageshow`
+re-read + `router.refresh()` on bfcache restore) targeted the wrong mechanism. Feed cards
+navigate via Next `<Link>` (client-side *soft* navigation), so pressing Back is a **`popstate`**,
+not a browser bfcache `pageshow`. And for signed-in viewers the homepage's RSC payload is held
+**stale in Next's Router Cache**, so a remount alone wouldn't refresh the server `read` flag.
+Confirmed both ways: a Playwright soft-nav Back test fails against the server-only behavior
+(card stays unread) and passes with the fix.
+- The localStorage read-set is now the **instant overlay for every viewer** (not just
+  logged-out): `MarkChapterRead` runs for signed-in users too, and display is
+  `read = serverRead || localRead`. Server `ChapterView` rows remain the cross-device truth.
+- The set is **namespaced per user** (`readChapterIds:<userId|anon>` via `readStorageKey`) so
+  two accounts on a shared device don't bleed read-state into each other.
+- `useLocalReadIds(userId)` re-syncs on **`popstate`** (soft Back/Forward) and **`pageshow`**
+  (hard bfcache restore), covering both navigation kinds with no refetch and no flash.
+- Removed `useRefreshOnBfcache` — the overlay supersedes it. Threaded `userId` (replacing the
+  `isSignedIn` prop) through `page.tsx`/`RecentChapterFeed`/`FeedList` and the chapter
+  `page.tsx`/`ChapterReader`/`ChoiceList`/`MarkChapterRead`.
+
+**Sample stories (seed).** `prisma/seed.ts` now seeds two demo authors and three branching
+stories — *The Lighthouse at Dunmore* (9 chapters, 4 levels deep on one path), *Signal from
+Europa* (7), *The Last Tea Shop on Marrow Street* (7) — built recursively from a nested
+`StoryNode` spec via the existing `createStoryWithRootChapter`/`createChildChapter` helpers.
+Idempotent (skips a story whose title already exists), so `npm run db:seed` is safe to re-run.
+
+**Tests.** `read-marker.test.tsx` rewritten for the new API: per-user namespacing, a
+`popstate` soft-Back re-read, a `pageshow` hard-Back re-read, and `MarkChapterRead` writing the
+namespaced set. `views-reads.spec.ts`: the read assertions target `main li[data-read="true"]`,
+plus a **new soft-nav regression spec** — a signed-in reader opens a feed chapter via its
+`<Link>`, presses Back, and the card is read with no reload (proven to fail pre-fix).
+
+**Docs.** Added a "UI principles → Visuals over words" section to `CLAUDE.md` (rides this
+branch).
+
+**Follow-up: "tapped option stays highlighted after Back" — iOS sticky `:hover`.** Reported
+on iPhone (the dev:phone preview). The cause wasn't focus at all: iOS Safari leaves `:hover`
+applied to the last-tapped element until you tap elsewhere, so the chosen choice/feed card kept
+its hover treatment (lifted shadow, accent border, and — via the read-card hover rule —
+un-dimmed back to full opacity) when you returned. Fix: gate every card hover rule behind
+`@media (hover: hover)` so it applies to real pointers only; the read-card brighten now splits
+into `.read:has(:focus-visible)` (keyboard, always) + `.read:hover` (inside the media query).
+Both `chapter-reader.module.css` and `recent-chapter-feed.module.css`. (An interim
+`onMouseDown`/`preventDefault` focus hack was tried and reverted — it addressed desktop focus
+restoration, not the actual iOS hover behavior.)
+
+**Follow-up: sign-in with a non-existent account crashed (500).** `authorize` returns `null`
+for bad credentials, so Auth.js `signIn` throws an `AuthError` (`CredentialsSignin`) that the
+`signInWithCredentials` server action didn't catch — an unhandled crash. Fix (`auth-actions.ts`):
+wrap `signIn` in try/catch, `redirect('/auth/sign-in?error=CredentialsSignin')` on `AuthError`,
+and re-throw everything else (notably the success `NEXT_REDIRECT`). Hardened the adjacent
+`signUp` crash class too: a duplicate email (Prisma `P2002`) now redirects to
+`/auth/sign-up?error=EmailTaken`, and missing fields to `?error=MissingFields`, instead of
+throwing. Both auth pages became `async`, read `searchParams.error`, and render a friendly
+`.formError` message (new style in `chapter-form.module.css`). New e2e (test-first, confirmed
+failing pre-fix): unknown-account sign-in and duplicate-email sign-up both show an error and
+stay on the page instead of crashing. Gate green — 15 e2e specs.

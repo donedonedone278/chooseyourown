@@ -5,10 +5,10 @@ import styles from './recent-chapter-feed.module.css';
 
 export function RecentChapterFeed({
   chapters,
-  isSignedIn
+  userId
 }: {
   chapters: FeedItem[];
-  isSignedIn: boolean;
+  userId?: string | null;
 }) {
   return (
     <main>
@@ -21,7 +21,7 @@ export function RecentChapterFeed({
       {chapters.length === 0 ? (
         <p className={styles.empty}>No chapters yet.</p>
       ) : (
-        <FeedList chapters={chapters} isSignedIn={isSignedIn} />
+        <FeedList chapters={chapters} userId={userId} />
       )}
     </main>
   );
