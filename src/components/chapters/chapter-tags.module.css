@@ -1,0 +1,102 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface-muted, #f0f0f0);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+
+.officialTag {
+  font-weight: 600;
+}
+
+.removeButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.addForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+}
+
+.controls {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+.inputWrap {
+  position: relative;
+  flex: 1;
+}
+
+.inputWrap label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.inputWrap input {
+  width: 100%;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted, #666);
+}
+
+.error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--danger, #c0392b);
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #ccc);
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+}
+
+.suggestions li {
+  padding: 0.25rem 0.6rem;
+}
+
+.suggestionButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}

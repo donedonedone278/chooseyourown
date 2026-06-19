@@ -17,6 +17,7 @@ model User {
   chapters     Chapter[]
   likes        ChapterLike[]
   reports      ChapterReport[]
+  tagsAdded    ChapterTag[]
 }
 
 model Story {
@@ -28,6 +29,7 @@ model Story {
   author        User      @relation(fields: [authorId], references: [id])
   chapters      Chapter[]
   rootChapterId String?   @unique
+  tagPermission String    @default("crowd")
 }
 
 model Chapter {
@@ -45,6 +47,7 @@ model Chapter {
   author          User          @relation(fields: [authorId], references: [id])
   likes           ChapterLike[]
   reports         ChapterReport[]
+  tags            ChapterTag[]
 }
 
 model ChapterLike {
@@ -70,4 +73,26 @@ model ChapterReport {
 
   chapter Chapter @relation(fields: [chapterId], references: [id])
   user    User    @relation(fields: [userId], references: [id])
+}
+
+model Tag {
+  id         String       @id @default(cuid())
+  name       String       @unique
+  isOfficial Boolean      @default(false)
+  icon       String?
+  createdAt  DateTime     @default(now())
+  chapters   ChapterTag[]
+}
+
+model ChapterTag {
+  id            String   @id @default(cuid())
+  chapterId     String
+  tagId         String
+  addedByUserId String
+  createdAt     DateTime @default(now())
+  chapter       Chapter  @relation(fields: [chapterId], references: [id])
+  tag           Tag      @relation(fields: [tagId], references: [id])
+  addedBy       User     @relation(fields: [addedByUserId], references: [id])
+
+  @@unique([chapterId, tagId])
 }
