@@ -18,6 +18,7 @@ model User {
   likes        ChapterLike[]
   reports      ChapterReport[]
   tagsAdded    ChapterTag[]
+  views        ChapterView[]
 }
 
 model Story {
@@ -41,6 +42,7 @@ model Chapter {
   content         String
   createdAt       DateTime      @default(now())
   deletedAt       DateTime?
+  viewCount       Int           @default(0)
   story           Story         @relation(fields: [storyId], references: [id])
   parentChapter   Chapter?      @relation("ChapterChildren", fields: [parentChapterId], references: [id])
   childChapters   Chapter[]     @relation("ChapterChildren")
@@ -48,6 +50,7 @@ model Chapter {
   likes           ChapterLike[]
   reports         ChapterReport[]
   tags            ChapterTag[]
+  views           ChapterView[]
 }
 
 model ChapterLike {
@@ -95,4 +98,16 @@ model ChapterTag {
   addedBy       User     @relation(fields: [addedByUserId], references: [id])
 
   @@unique([chapterId, tagId])
+}
+
+model ChapterView {
+  id        String   @id @default(cuid())
+  chapterId String
+  viewerKey String
+  userId    String?
+  createdAt DateTime @default(now())
+  chapter   Chapter  @relation(fields: [chapterId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@unique([chapterId, viewerKey])
 }
