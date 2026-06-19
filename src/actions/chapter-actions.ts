@@ -29,6 +29,11 @@ export async function createChildChapterAction(
     content
   });
 
+  // New chapter belongs on the homepage feed, and it's a fresh choice on the
+  // parent — drop both cached payloads so a client navigation sees it.
+  revalidatePath('/');
+  revalidatePath(`/stories/${storyId}/chapters/${parentChapterId}`);
+
   // Land the author on the chapter they just wrote, not the parent they branched from.
   redirect(`/stories/${storyId}/chapters/${child.id}`);
 }

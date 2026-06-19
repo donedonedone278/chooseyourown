@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireUser } from '@/lib/auth';
@@ -25,6 +26,10 @@ export async function createStory(formData: FormData) {
     content,
     tagPermission
   });
+
+  // The new root chapter belongs on the homepage feed; purge the cached '/'
+  // payload (including any prefetched copy) so a client navigation shows it.
+  revalidatePath('/');
 
   redirect(`/stories/${story.id}/chapters/${story.rootChapterId}`);
 }
