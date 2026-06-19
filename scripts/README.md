@@ -10,6 +10,37 @@ the `http://<windows-LAN-IP>:3000` URL to open on a phone on the same wifi. Also
 sanity-checks the Windows port-forward and warns if it's stale or missing. This is the
 standard way to run the app for phone testing — `npm run dev` stays localhost-only.
 
+## `phone-url.sh` — `npm run phone:url`
+
+Prints **just** the phone URL (`http://<windows-LAN-IP>:3000`) and exits — no server.
+Useful when `dev:phone` is already running in the background and you only need the URL
+again (its startup banner is easy to miss in a captured log). Best-effort: falls back to
+the WSL/host IP, then a clear message, on non-WSL hosts. Override the port with
+`PORT=4000 npm run phone:url`.
+
+## `check.sh` — `npm run check`
+
+Low-noise `npm test`: runs the same gate (lint → typecheck → unit → e2e, fail-fast) but
+prints one `✓ <stage>` line per stage on success and dumps output **only** for the stage
+that fails. Use it when you just want pass/fail plus the first failure without scrolling;
+`npm test` still prints everything. Self-contained (sets the Volta PATH itself).
+
+## `volta-env.sh` — (sourced, no npm alias)
+
+`export PATH="$HOME/.volta/bin:$PATH"` so **non-interactive** shells (CI, scripts, the
+Claude Code Bash tool) pick up Volta's pinned Node instead of the distro default — Volta's
+shims only auto-activate in interactive shells (see `CLAUDE.md` → Environment). Wire it in
+per-machine by pointing your shell's `BASH_ENV` at this file; for the Claude Code Bash
+tool, set it in the gitignored `.claude/settings.local.json` (local only, never shared):
+
+```json
+{ "env": { "BASH_ENV": "/abs/path/to/repo/scripts/volta-env.sh" } }
+```
+
+Portable (`$HOME`) and non-destructive (prepends PATH). The file is committed but inert
+until something sources it, so it's safe for everyone and helps any contributor who wants
+the same convenience.
+
 ---
 
 # LAN access from a phone (WSL2)
