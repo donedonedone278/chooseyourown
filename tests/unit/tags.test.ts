@@ -10,18 +10,31 @@ import {
 import { createChapter, createStory, createTag, createUser } from '@/test/factories';
 
 describe('normalizeTagName', () => {
-  it('lowercases, trims, and collapses internal whitespace', () => {
-    expect(normalizeTagName('  Sci  Fi  ')).toBe('sci fi');
+  it('lowercases and trims', () => {
+    expect(normalizeTagName('  Horror ')).toBe('horror');
     expect(normalizeTagName('HORROR')).toBe('horror');
   });
 
-  it('accepts hyphens and digits', () => {
-    expect(normalizeTagName('sci-fi-2')).toBe('sci-fi-2');
+  it('converts spaces and hyphens to underscores', () => {
+    expect(normalizeTagName('  Sci  Fi  ')).toBe('sci_fi');
+    expect(normalizeTagName('haunted house')).toBe('haunted_house');
+    expect(normalizeTagName('sci-fi-2')).toBe('sci_fi_2');
+  });
+
+  it('collapses runs of underscores and strips leading/trailing ones', () => {
+    expect(normalizeTagName('plot___twist')).toBe('plot_twist');
+    expect(normalizeTagName('__horror__')).toBe('horror');
   });
 
   it('rejects empty or whitespace-only names', () => {
     expect(() => normalizeTagName('')).toThrow();
     expect(() => normalizeTagName('   ')).toThrow();
+    expect(() => normalizeTagName('___')).toThrow();
+  });
+
+  it('rejects names shorter than 4 characters', () => {
+    expect(() => normalizeTagName('abc')).toThrow();
+    expect(() => normalizeTagName('a b')).toThrow();
   });
 
   it('rejects names over 30 characters', () => {
@@ -31,6 +44,7 @@ describe('normalizeTagName', () => {
   it('rejects disallowed characters', () => {
     expect(() => normalizeTagName('horror!')).toThrow();
     expect(() => normalizeTagName('horror/mystery')).toThrow();
+    expect(() => normalizeTagName('horror.txt')).toThrow();
   });
 });
 
@@ -99,7 +113,7 @@ describe('addTagToChapter', () => {
     await addTagToChapter({ chapterId: chapter.id, name: '  Brand New Tag ', userId: author.id });
 
     const tags = await getStoryTopTags(story.id);
-    const created = tags.find((t) => t.name === 'brand new tag');
+    const created = tags.find((t) => t.name === 'brand_new_tag');
     expect(created).toBeDefined();
     expect(created?.isOfficial).toBe(false);
   });

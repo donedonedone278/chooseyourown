@@ -3,28 +3,35 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireUser } from '@/lib/auth';
-import { addTagToChapter, removeTagFromChapter, suggestTags } from '@/lib/tags';
+import { addTagToChapter, InvalidTagNameError, removeTagFromChapter, suggestTags } from '@/lib/tags';
+
+export type AddChapterTagResult = { error?: string };
 
 export async function addChapterTagAction(
   storyId: string,
   chapterId: string,
   formData: FormData
-) {
+): Promise<AddChapterTagResult> {
   const session = await requireUser();
   const name = String(formData.get('name') ?? '').trim();
 
   if (!name) {
-    throw new Error('Tag name is required.');
+    return { error: 'Tag name is required.' };
   }
 
   try {
     await addTagToChapter({ chapterId, name, userId: session.user.id });
   } catch (error) {
+    // Invalid input is the user's to fix — surface it inline rather than crashing.
+    if (error instanceof InvalidTagNameError) {
+      return { error: error.message };
+    }
     // A repeat add is a harmless no-op, not an error the UI needs to surface.
     if (!(error instanceof Error) || !/already tagged/i.test(error.message)) throw error;
   }
 
   revalidatePath(`/stories/${storyId}/chapters/${chapterId}`);
+  return {};
 }
 
 export async function removeChapterTagAction(

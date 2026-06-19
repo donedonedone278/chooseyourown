@@ -7,7 +7,7 @@ const OFFICIAL_TAGS: { name: string; icon: string }[] = [
   { name: 'mystery', icon: 'Search' },
   { name: 'comedy', icon: 'Laugh' },
   { name: 'fantasy', icon: 'Wand' },
-  { name: 'sci-fi', icon: 'Rocket' }
+  { name: 'sci_fi', icon: 'Rocket' }
 ];
 
 async function main() {

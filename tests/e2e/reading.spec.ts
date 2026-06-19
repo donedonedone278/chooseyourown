@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('a published chapter surfaces in the feed and choices show like counts', async ({ page }) => {
-  const stamp = Date.now();
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const storyTitle = `Feed Story ${stamp}`;
   const rootTitle = `Root ${stamp}`;
   const childTitle = `Choice ${stamp}`;
@@ -35,6 +35,6 @@ test('a published chapter surfaces in the feed and choices show like counts', as
   // The homepage feed surfaces the freshly published chapter.
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Recent chapters' })).toBeVisible();
-  await page.locator('main').getByRole('link', { name: rootTitle }).click();
+  await page.locator('main').getByRole('link', { name: rootTitle, exact: true }).click();
   await expect(page.getByRole('heading', { name: rootTitle })).toBeVisible();
 });

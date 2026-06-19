@@ -39,9 +39,24 @@
 
 .addForm {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
   position: relative;
+}
+
+.hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted, #666);
+}
+
+.error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--danger, #c0392b);
 }
 
 .suggestions {

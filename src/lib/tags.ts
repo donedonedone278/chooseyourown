@@ -2,29 +2,53 @@ import { Prisma } from '@prisma/client';
 
 import { db } from '@/lib/db';
 
-const NAME_PATTERN = /^[a-z0-9 -]+$/;
+const NAME_PATTERN = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
+const MIN_LENGTH = 4;
+const MAX_LENGTH = 30;
+
+/** Invalid user-supplied tag names — surfaced to the UI, not a server bug. */
+export class InvalidTagNameError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidTagNameError';
+  }
+}
 
 /**
- * Normalize a raw tag name: lowercase, trim, collapse internal whitespace,
- * restrict to `[a-z0-9 -]`, length 1–30. Throws a domain error on invalid input.
+ * Normalize a raw tag name into the canonical `lowercase_with_underscores` form:
+ * lowercase, trim, fold spaces and hyphens into underscores, collapse repeated
+ * underscores, and strip leading/trailing underscores. The result must be
+ * 4–30 chars of `[a-z0-9_]` with no leading, trailing, or doubled underscores.
+ * Throws an `InvalidTagNameError` on invalid input.
  */
 export function normalizeTagName(raw: string): string {
   if (typeof raw !== 'string') {
-    throw new Error('Tag name is required.');
+    throw new InvalidTagNameError('Tag name is required.');
   }
 
-  const normalized = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normalized = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_') // spaces and hyphens become underscores
+    .replace(/_+/g, '_') // collapse runs of underscores
+    .replace(/^_+|_+$/g, ''); // strip leading/trailing underscores
 
   if (normalized.length === 0) {
-    throw new Error('Tag name must not be empty.');
-  }
-
-  if (normalized.length > 30) {
-    throw new Error('Tag name must be 30 characters or fewer.');
+    throw new InvalidTagNameError('Tag name must not be empty.');
   }
 
   if (!NAME_PATTERN.test(normalized)) {
-    throw new Error('Tag name may only contain lowercase letters, numbers, spaces, and hyphens.');
+    throw new InvalidTagNameError(
+      'Tag may only contain lowercase letters, numbers, and underscores.'
+    );
+  }
+
+  if (normalized.length < MIN_LENGTH) {
+    throw new InvalidTagNameError(`Tag must be at least ${MIN_LENGTH} characters.`);
+  }
+
+  if (normalized.length > MAX_LENGTH) {
+    throw new InvalidTagNameError(`Tag must be ${MAX_LENGTH} characters or fewer.`);
   }
 
   return normalized;

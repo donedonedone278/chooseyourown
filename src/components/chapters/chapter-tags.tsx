@@ -54,10 +54,12 @@ export function ChapterTags({
 }) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<TagSuggestion[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   async function handleQueryChange(value: string) {
     setQuery(value);
+    if (error) setError(null);
     if (!value.trim()) {
       setSuggestions([]);
       return;
@@ -71,7 +73,12 @@ export function ChapterTags({
     const formData = new FormData();
     formData.set('name', name);
     startTransition(async () => {
-      await addChapterTagAction(storyId, chapterId, formData);
+      const result = await addChapterTagAction(storyId, chapterId, formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
       setQuery('');
       setSuggestions([]);
     });
@@ -123,11 +130,21 @@ export function ChapterTags({
               value={query}
               onChange={(event) => handleQueryChange(event.target.value)}
               disabled={isPending}
+              aria-describedby="add-tag-hint"
+              aria-invalid={error ? true : undefined}
             />
           </label>
+          <p id="add-tag-hint" className={styles.hint}>
+            lowercase, underscores between words, 4–30 characters
+          </p>
           <button type="submit" className="btn btn--secondary" disabled={isPending || !query.trim()}>
             Add
           </button>
+          {error ? (
+            <p role="alert" className={styles.error}>
+              {error}
+            </p>
+          ) : null}
           {suggestions.length > 0 ? (
             <ul className={styles.suggestions}>
               {suggestions.map((suggestion) => (

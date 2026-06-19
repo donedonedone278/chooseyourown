@@ -29,9 +29,10 @@ test('crowd-mode tagging: two users can each add a tag to the same chapter', asy
   // covered at the component level in chapter-tags.test.tsx — this e2e spec
   // exercises the add/permission flow without depending on `prisma db seed`
   // having been run against the shared dev db.)
+  // Typed with a space; tags normalize to lowercase_with_underscores.
   await main.getByRole('textbox', { name: 'Add a tag' }).fill('haunted house');
   await main.getByRole('button', { name: 'Add' }).click();
-  const hauntedTag = main.locator('li', { hasText: 'haunted house' });
+  const hauntedTag = main.locator('li', { hasText: 'haunted_house' });
   await expect(hauntedTag).toBeVisible();
 
   const url = page.url();
@@ -50,10 +51,10 @@ test('crowd-mode tagging: two users can each add a tag to the same chapter', asy
   const secondMain = secondPage.locator('main');
   await secondMain.getByRole('textbox', { name: 'Add a tag' }).fill('a custom tag');
   await secondMain.getByRole('button', { name: 'Add' }).click();
-  await expect(secondMain.locator('li', { hasText: 'a custom tag' })).toBeVisible();
+  await expect(secondMain.locator('li', { hasText: 'a_custom_tag' })).toBeVisible();
 
   // Sam is not the author, so they have no remove control on Riley's tag.
-  await expect(secondMain.getByRole('button', { name: 'Remove haunted house' })).toHaveCount(0);
+  await expect(secondMain.getByRole('button', { name: 'Remove haunted_house' })).toHaveCount(0);
 
   await secondContext.close();
 });

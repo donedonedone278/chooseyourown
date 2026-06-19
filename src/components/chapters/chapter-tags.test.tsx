@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { ChapterTags } from '@/components/chapters/chapter-tags';
+import { addChapterTagAction } from '@/actions/tag-actions';
 
 vi.mock('@/actions/tag-actions', () => ({
-  addChapterTagAction: vi.fn(),
+  addChapterTagAction: vi.fn(async () => ({})),
   removeChapterTagAction: vi.fn(),
   suggestTagsAction: vi.fn(async () => [])
 }));
@@ -68,5 +69,24 @@ describe('ChapterTags', () => {
       />
     );
     expect(screen.queryByRole('button', { name: /remove horror/i })).not.toBeInTheDocument();
+  });
+
+  it('surfaces a validation error from the add action instead of crashing', async () => {
+    vi.mocked(addChapterTagAction).mockResolvedValueOnce({
+      error: 'Tag must be at least 4 characters.'
+    });
+
+    render(
+      <ChapterTags storyId="story-1" chapterId="chapter-1" tags={[]} canAdd={true} canRemove={false} />
+    );
+
+    fireEvent.change(screen.getByRole('textbox', { name: /add a tag/i }), {
+      target: { value: 'ab' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Tag must be at least 4 characters.')
+    );
   });
 });
