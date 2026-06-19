@@ -183,3 +183,42 @@ merge-on-login of anonymous device read-history into an account.
 `0.0.0.0:3000` left over from an earlier session, which made Playwright's
 `reuseExistingServer` check misbehave (it tried to spin up a second server on :3001 and
 then timed out). Killed it before running the e2e gate; not part of this feature's changes.
+
+## Post-merge-review fix — logged-out chapter open crashed (500)
+
+Verification turned up a real bug the original e2e suite couldn't catch: **every actor in
+`views-reads.spec.ts` was signed in**, so nobody exercised the cookie-write path for a
+brand-new anonymous visitor.
+
+**Repro (confirmed before fixing):** a cookieless `curl` GET of a chapter URL returned
+**HTTP 500** with body containing `"Cookies can only be modified in a Server Action or
+Route Handler"`.
+
+**Root cause:** `recordViewAction` (`src/actions/view-actions.ts`) ran during the chapter
+page's server render (`src/app/stories/[storyId]/chapters/[chapterId]/page.tsx`). For a
+logged-out viewer with no `deviceId` cookie yet, `getOrSetDeviceId()` called
+`cookies().set(...)`, which Next.js forbids outside a Server Action / Route Handler.
+Signed-in viewers use `user:<id>` and never call it, which is why all three signed-in
+actors in the original spec sailed through.
+
+**Fix — kept the approved render-time recording design, moved cookie *writing* out of
+render:**
+- Added `src/middleware.ts`: mints a `deviceId` cookie (Web Crypto `randomUUID()`) when
+  absent, setting it on both the request and response so it's readable in the same
+  request that minted it. `matcher: ['/stories/:path*']` covers the chapter reader route.
+- `view-actions.ts`'s `getOrSetDeviceId` → `getDeviceId`, now read-only
+  (`cookies().get(...)`, no `.set()`). Falls back to an ephemeral `randomUUID()` if the
+  cookie is somehow absent (defensive — middleware should guarantee presence) so the
+  function still can't throw.
+
+**New test (test-first):** added a second case to `tests/e2e/views-reads.spec.ts` —
+a fresh `browser.newContext()` (no sign-in, no cookies) opens a freshly published chapter.
+Confirmed it failed against the pre-fix code (`expect(response.status()).toBe(200)` got
+500) by temporarily reverting the action change and moving `middleware.ts` aside; restored
+both and re-ran to green. Covers: page renders instead of 500, view count goes to "1 view",
+a same-context reload stays idempotent at "1 view", and the chapter shows "Read · from
+<story>" in that context's feed afterward (logged-out localStorage path).
+
+**Verification:** cookieless `curl` repro now returns **HTTP 200** with no
+"Cookies can only be modified" string in the body. Full `npm test` (lint → typecheck → 49
+unit/component tests → 12 e2e specs, up from 11) is green.

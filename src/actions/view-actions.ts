@@ -10,22 +10,16 @@ import { recordView } from '@/lib/views';
 const DEVICE_ID_COOKIE = 'deviceId';
 
 /**
- * Resolve (and lazily set) the logged-out device id cookie. Signed-in viewers
- * don't need one for view recording, but we still keep it stable per browser
- * so a later sign-out continues to read consistently.
+ * Resolve the logged-out device id. `src/middleware.ts` guarantees the
+ * `deviceId` cookie exists before any `/stories/*` page renders, so this is
+ * read-only — render-time code can't call `cookies().set()` (Next.js throws
+ * "Cookies can only be modified in a Server Action or Route Handler"). The
+ * random fallback only matters if middleware's matcher were ever to miss a
+ * route; it keeps this function from throwing even then.
  */
-async function getOrSetDeviceId(): Promise<string> {
+async function getDeviceId(): Promise<string> {
   const store = await cookies();
-  const existing = store.get(DEVICE_ID_COOKIE)?.value;
-  if (existing) return existing;
-
-  const id = randomUUID();
-  store.set(DEVICE_ID_COOKIE, id, {
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 365
-  });
-  return id;
+  return store.get(DEVICE_ID_COOKIE)?.value ?? randomUUID();
 }
 
 /**
@@ -36,7 +30,7 @@ async function getOrSetDeviceId(): Promise<string> {
 export async function recordViewAction(chapterId: string, authorId: string) {
   const session = await auth();
   const userId = session?.user?.id;
-  const viewerKey = userId ? `user:${userId}` : `device:${await getOrSetDeviceId()}`;
+  const viewerKey = userId ? `user:${userId}` : `device:${await getDeviceId()}`;
 
   return recordView({ chapterId, viewerKey, userId, authorId });
 }
