@@ -21,6 +21,19 @@ export function ChapterForm({
           <input name="storyTitle" type="text" required />
         </label>
       ) : null}
+      {includeStoryTitle ? (
+        <fieldset>
+          <legend>Who can tag chapters?</legend>
+          <label>
+            <input type="radio" name="tagPermission" value="crowd" defaultChecked />
+            Anyone
+          </label>
+          <label>
+            <input type="radio" name="tagPermission" value="author" />
+            Only me
+          </label>
+        </fieldset>
+      ) : null}
       <label>
         Chapter title
         <input name="title" type="text" required />

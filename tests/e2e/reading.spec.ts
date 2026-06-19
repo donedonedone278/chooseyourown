@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('a published chapter surfaces in the feed and choices show like counts', async ({ page }) => {
-  const stamp = Date.now();
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const storyTitle = `Feed Story ${stamp}`;
   const rootTitle = `Root ${stamp}`;
   const childTitle = `Choice ${stamp}`;
@@ -21,13 +21,18 @@ test('a published chapter surfaces in the feed and choices show like counts', as
   await page.getByLabel('Chapter content').fill('The root chapter.');
   await page.getByRole('button', { name: 'Publish first chapter' }).click();
   await expect(page.getByRole('heading', { name: rootTitle })).toBeVisible();
+  const rootUrl = page.url();
 
   await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
   await page.getByLabel('Chapter title').fill(childTitle);
   await page.getByLabel('Chapter content').fill('A branch.');
   await page.getByRole('button', { name: 'Publish chapter' }).click();
 
+  // Publishing lands the author on the new child chapter (not the parent).
+  await expect(page.getByRole('heading', { name: childTitle })).toBeVisible();
+
   // Back on the root reader: the choice shows with its (zero) like count.
+  await page.goto(rootUrl);
   await expect(page.getByRole('heading', { name: rootTitle })).toBeVisible();
   await expect(page.locator('main').getByRole('link', { name: childTitle })).toBeVisible();
   await expect(page.locator('main').getByText('0 likes')).toBeVisible();
@@ -35,6 +40,7 @@ test('a published chapter surfaces in the feed and choices show like counts', as
   // The homepage feed surfaces the freshly published chapter.
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Recent chapters' })).toBeVisible();
-  await page.locator('main').getByRole('link', { name: rootTitle }).click();
-  await expect(page.getByRole('heading', { name: rootTitle })).toBeVisible();
+  await expect(
+    page.locator('main').getByRole('link', { name: rootTitle, exact: true })
+  ).toBeVisible();
 });

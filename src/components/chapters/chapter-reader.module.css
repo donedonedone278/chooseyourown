@@ -32,6 +32,10 @@
   border: 1px solid var(--border);
 }
 
+.report {
+  margin-top: var(--space-2);
+}
+
 .likeCount {
   font-family: var(--font-sans);
   font-size: 0.9rem;

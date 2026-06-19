@@ -86,3 +86,36 @@ feature was ever in flight. Both assumptions broke. Standing rules now:
 - **You approve and merge your own work** (local merge, no PR/cross-review gate); `develop →
   main` releases stay a single coordinated step. Full detail in `CLAUDE.md` → "Branches and
   workflow."
+
+## Never use git worktrees for implementation (2026-06-16)
+
+**Correction:** Launched the tagging-system implementation as a subagent with
+`isolation: worktree`. The user stopped it: we don't work in worktrees here. A worktree is a
+separate checkout that lacks `node_modules` (so `npm test` can't run without a fresh install),
+puts the agent on a throwaway branch, and forks the working tree away from the branch we
+actually want to build on — confusing for no benefit at our scale.
+
+**Rule:** Implement on the **normal feature branch in the main working tree**. The
+orchestrator checks out the feature branch, then launches the (non-isolated) Sonnet subagent,
+which shares that working tree. Never pass `isolation: worktree`. Baked into `CLAUDE.md` →
+"Branches and workflow," step 3.
+
+## Diagnose caching/feed bugs empirically before theorizing (2026-06-18)
+
+**Self-caught (no user correction needed, but cost a detour):** Given "new chapters
+don't show in the feed," I jumped to "client Router Cache is stale" and wrote a heavy
+client-nav e2e to "catch" it. The test passed *without* the fix (dev refetches dynamic
+routes on client nav), proving it caught nothing — and the rewrite's extra route
+compilation starved the dev server enough to make the unrelated `editor.spec` selection
+flake on every full-suite run. Two lessons:
+- **Diagnose first:** compare the *live server's* output to the DB before guessing.
+  `curl localhost:3000/ | grep cardTitle` vs the newest `db.chapter` rows showed the
+  feed rendered fresh server-side — so the query/render were fine and the cache was the
+  only suspect. That empirical check should come before writing any test or fix.
+- **Heavy e2e specs cause contention flakes here.** On WSL2 with 8 Playwright workers
+  against `next dev` (on-demand route compilation), adding navigations to one spec can
+  push a timing-sensitive spec elsewhere (contentEditable selection in `editor.spec`)
+  over the edge. Keep e2e specs lean; prefer `page.goto` over multi-step client nav
+  unless the client-nav path is itself what's under test. `revalidatePath` after a
+  mutation is the right post-mutation fix regardless — it just isn't deterministically
+  e2e-testable under `next dev`.

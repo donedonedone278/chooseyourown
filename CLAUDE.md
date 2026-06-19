@@ -40,7 +40,10 @@ own branch, and pushes.
 2. **Write a plan** for the change (an implementation plan an agent can execute) into
    `tasks/todo.md`. The plan lives **only on the feature branch** — see step 5; it never
    reaches `develop`, so two in-flight features never fight over this file.
-3. **Have Sonnet implement the plan** (subagent), strictly test-first, until `npm test` is green.
+3. **Have Sonnet implement the plan** (subagent), strictly test-first, until `npm test` is
+   green. **Never use git worktrees / `isolation: worktree` for this** — implement on the
+   normal feature branch in the main working tree (the subagent shares it). Worktrees lack
+   `node_modules`, fork the checkout in confusing ways, and aren't how we work here.
 4. **Get the user's approval** of the result. ("The user" = whichever contributor owns the
    branch; you approve and merge your own work — there's no cross-review gate.)
 5. **Reset `tasks/todo.md` on the branch, then sync + merge + push:**

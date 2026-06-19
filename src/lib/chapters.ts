@@ -7,10 +7,15 @@ export async function createStoryWithRootChapter(input: {
   authorId: string;
   chapterTitle: string;
   content: string;
+  tagPermission?: 'crowd' | 'author';
 }) {
   return db.$transaction(async (tx) => {
     const story = await tx.story.create({
-      data: { title: input.title, authorId: input.authorId }
+      data: {
+        title: input.title,
+        authorId: input.authorId,
+        tagPermission: input.tagPermission ?? 'crowd'
+      }
     });
 
     const rootChapter = await tx.chapter.create({

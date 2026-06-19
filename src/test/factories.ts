@@ -28,7 +28,14 @@ export async function createStory(overrides: {
   title?: string;
   authorId: string;
   rootChapterId?: string | null;
-}): Promise<{ id: string; title: string; authorId: string; rootChapterId: string | null }> {
+  tagPermission?: string;
+}): Promise<{
+  id: string;
+  title: string;
+  authorId: string;
+  rootChapterId: string | null;
+  tagPermission: string;
+}> {
   await db.user.upsert({
     where: { id: overrides.authorId },
     update: {},
@@ -44,7 +51,8 @@ export async function createStory(overrides: {
     data: {
       title: overrides.title ?? `Story ${uniqueSuffix()}`,
       authorId: overrides.authorId,
-      rootChapterId: overrides.rootChapterId ?? null
+      rootChapterId: overrides.rootChapterId ?? null,
+      tagPermission: overrides.tagPermission ?? 'crowd'
     }
   });
 }
@@ -74,6 +82,21 @@ export async function createChapter(overrides: {
       title: overrides.title ?? `Chapter ${uniqueSuffix()}`,
       content: overrides.content ?? 'Test content.',
       parentChapterId: overrides.parentChapterId ?? null
+    }
+  });
+}
+
+export async function createTag(overrides: {
+  name?: string;
+  isOfficial?: boolean;
+  icon?: string | null;
+} = {}) {
+  const name = overrides.name ?? `tag-${uniqueSuffix()}`;
+  return db.tag.create({
+    data: {
+      name,
+      isOfficial: overrides.isOfficial ?? false,
+      icon: overrides.icon ?? null
     }
   });
 }
