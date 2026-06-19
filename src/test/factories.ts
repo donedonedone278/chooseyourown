@@ -100,3 +100,17 @@ export async function createTag(overrides: {
     }
   });
 }
+
+export async function createView(overrides: {
+  chapterId: string;
+  viewerKey?: string;
+  userId?: string | null;
+}) {
+  return db.chapterView.create({
+    data: {
+      chapterId: overrides.chapterId,
+      viewerKey: overrides.viewerKey ?? `device:${uniqueSuffix()}`,
+      userId: overrides.userId ?? null
+    }
+  });
+}

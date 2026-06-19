@@ -35,3 +35,10 @@
   font-size: 0.9rem;
   color: var(--text-muted);
 }
+
+.formError {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--danger);
+  margin: 0;
+}
