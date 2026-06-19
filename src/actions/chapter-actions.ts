@@ -21,7 +21,7 @@ export async function createChildChapterAction(
     throw new Error('Chapter title is required.');
   }
 
-  await createChildChapter({
+  const child = await createChildChapter({
     storyId,
     parentChapterId,
     authorId: session.user.id,
@@ -29,7 +29,8 @@ export async function createChildChapterAction(
     content
   });
 
-  redirect(`/stories/${storyId}/chapters/${parentChapterId}`);
+  // Land the author on the chapter they just wrote, not the parent they branched from.
+  redirect(`/stories/${storyId}/chapters/${child.id}`);
 }
 
 export async function likeChapterAction(chapterId: string, storyId: string) {

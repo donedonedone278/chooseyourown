@@ -71,6 +71,19 @@ describe('ChapterTags', () => {
     expect(screen.queryByRole('button', { name: /remove horror/i })).not.toBeInTheDocument();
   });
 
+  it('filters the add-tag input to the canonical form as the user types', () => {
+    render(
+      <ChapterTags storyId="story-1" chapterId="chapter-1" tags={[]} canAdd={true} canRemove={false} />
+    );
+
+    const input = screen.getByRole('textbox', { name: /add a tag/i }) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Haunted House!' } });
+    expect(input.value).toBe('haunted_house');
+
+    fireEvent.change(input, { target: { value: '__sci-fi@@' } });
+    expect(input.value).toBe('sci_fi');
+  });
+
   it('surfaces a validation error from the add action instead of crashing', async () => {
     vi.mocked(addChapterTagAction).mockResolvedValueOnce({
       error: 'Tag must be at least 4 characters.'

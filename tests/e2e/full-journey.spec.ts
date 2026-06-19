@@ -25,7 +25,7 @@ test('admin can remove a reported chapter end-to-end', async ({ page }) => {
   await page.getByLabel('Chapter title').fill(childTitle);
   await page.getByLabel('Chapter content').fill('Content that gets reported.');
   await page.getByRole('button', { name: 'Publish chapter' }).click();
-  await page.locator('main').getByRole('link', { name: childTitle }).click();
+  // Publishing lands us directly on the new child chapter.
   await expect(page.getByRole('heading', { name: childTitle })).toBeVisible();
   const chapterUrl = page.url();
 

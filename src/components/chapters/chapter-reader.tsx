@@ -46,14 +46,6 @@ export function ChapterReader({
           <MarkdownContent markdown={content} />
         </div>
 
-        <ChapterTags
-          storyId={storyId}
-          chapterId={chapterId}
-          tags={tags}
-          canAdd={canAddTags}
-          canRemove={canRemoveTags}
-        />
-
         <section aria-label="Reactions" className={styles.reactions}>
           <p className={styles.likeCount}>
             Liked by {likeCount} {likeCount === 1 ? 'reader' : 'readers'}
@@ -67,7 +59,6 @@ export function ChapterReader({
           ) : (
             <Link href="/auth/sign-in">Sign in to like</Link>
           )}
-          {isSignedIn ? <ReportChapter chapterId={chapterId} /> : null}
         </section>
 
         <section aria-label="Choices" className={styles.choices}>
@@ -92,6 +83,20 @@ export function ChapterReader({
             Add a chapter
           </Link>
         </section>
+
+        <ChapterTags
+          storyId={storyId}
+          chapterId={chapterId}
+          tags={tags}
+          canAdd={canAddTags}
+          canRemove={canRemoveTags}
+        />
+
+        {isSignedIn ? (
+          <section aria-label="Report" className={styles.report}>
+            <ReportChapter chapterId={chapterId} />
+          </section>
+        ) : null}
       </article>
     </main>
   );
