@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { ReadMarker } from '@/components/chapters/read-marker';
 import styles from './recent-chapter-feed.module.css';
 
 type FeedItem = {
@@ -7,9 +8,16 @@ type FeedItem = {
   title: string;
   storyId: string;
   story: { title: string };
+  read: boolean;
 };
 
-export function RecentChapterFeed({ chapters }: { chapters: FeedItem[] }) {
+export function RecentChapterFeed({
+  chapters,
+  isSignedIn
+}: {
+  chapters: FeedItem[];
+  isSignedIn: boolean;
+}) {
   return (
     <main>
       <h1>Recent chapters</h1>
@@ -21,21 +29,29 @@ export function RecentChapterFeed({ chapters }: { chapters: FeedItem[] }) {
       {chapters.length === 0 ? (
         <p className={styles.empty}>No chapters yet.</p>
       ) : (
-        <ul className={styles.list}>
-          {chapters.map((chapter) => (
-            <li key={chapter.id} className={styles.card}>
-              <Link
-                href={`/stories/${chapter.storyId}/chapters/${chapter.id}`}
-                className={styles.cardTitle}
-              >
-                {chapter.title}
-              </Link>
-              <span className={styles.from}>
-                from <Link href={`/stories/${chapter.storyId}`}>{chapter.story.title}</Link>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <ReadMarker>
+          {(isReadLocally) => (
+            <ul className={styles.list}>
+              {chapters.map((chapter) => {
+                const read = isSignedIn ? chapter.read : isReadLocally(chapter.id);
+                return (
+                  <li key={chapter.id} className={styles.card}>
+                    <Link
+                      href={`/stories/${chapter.storyId}/chapters/${chapter.id}`}
+                      className={styles.cardTitle}
+                    >
+                      {chapter.title}
+                    </Link>
+                    <span className={styles.from}>
+                      {read ? 'Read · ' : ''}
+                      from <Link href={`/stories/${chapter.storyId}`}>{chapter.story.title}</Link>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </ReadMarker>
       )}
     </main>
   );

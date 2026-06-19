@@ -3,10 +3,11 @@ import Link from 'next/link';
 import { likeChapterAction } from '@/actions/chapter-actions';
 import { ChapterTags, type ChapterTagView } from '@/components/chapters/chapter-tags';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
+import { ReadMarker } from '@/components/chapters/read-marker';
 import { ReportChapter } from '@/components/chapters/report-chapter';
 import styles from './chapter-reader.module.css';
 
-type Choice = { id: string; title: string; likeCount: number };
+type Choice = { id: string; title: string; likeCount: number; read: boolean };
 
 export function ChapterReader({
   storyId,
@@ -16,6 +17,7 @@ export function ChapterReader({
   storyTitle,
   choices,
   likeCount,
+  viewCount,
   viewerHasLiked,
   isSignedIn,
   tags,
@@ -29,6 +31,7 @@ export function ChapterReader({
   storyTitle: string;
   choices: Choice[];
   likeCount: number;
+  viewCount: number;
   viewerHasLiked: boolean;
   isSignedIn: boolean;
   tags: ChapterTagView[];
@@ -50,6 +53,9 @@ export function ChapterReader({
           <p className={styles.likeCount}>
             Liked by {likeCount} {likeCount === 1 ? 'reader' : 'readers'}
           </p>
+          <p className={styles.viewCount}>
+            {viewCount} {viewCount === 1 ? 'view' : 'views'}
+          </p>
           {isSignedIn ? (
             <form action={likeChapterAction.bind(null, chapterId, storyId)}>
               <button type="submit" className={`btn ${styles.likeButton}`} disabled={viewerHasLiked}>
@@ -66,18 +72,26 @@ export function ChapterReader({
           {choices.length === 0 ? (
             <p className={styles.empty}>No choices yet — be the first to continue this story.</p>
           ) : (
-            <ul className={styles.choiceList}>
-              {choices.map((choice) => (
-                <li key={choice.id} className={styles.choiceCard}>
-                  <Link href={`/stories/${storyId}/chapters/${choice.id}`} className={styles.choiceTitle}>
-                    {choice.title}
-                  </Link>
-                  <span className={styles.choiceLikes}>
-                    {choice.likeCount} {choice.likeCount === 1 ? 'like' : 'likes'}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <ReadMarker markAsReadId={isSignedIn ? undefined : chapterId}>
+              {(isReadLocally) => (
+                <ul className={styles.choiceList}>
+                  {choices.map((choice) => {
+                    const read = isSignedIn ? choice.read : isReadLocally(choice.id);
+                    return (
+                      <li key={choice.id} className={styles.choiceCard}>
+                        <Link href={`/stories/${storyId}/chapters/${choice.id}`} className={styles.choiceTitle}>
+                          {choice.title}
+                        </Link>
+                        <span className={styles.choiceLikes}>
+                          {read ? 'Read · ' : ''}
+                          {choice.likeCount} {choice.likeCount === 1 ? 'like' : 'likes'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </ReadMarker>
           )}
           <Link href={`/stories/${storyId}/chapters/${chapterId}/new`} className={`btn btn--secondary ${styles.addChapter}`}>
             Add a chapter
