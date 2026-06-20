@@ -68,6 +68,31 @@ describe('recordView', () => {
     expect(updated?.viewCount).toBe(0);
   });
 
+  it('degrades to a no-op (no throw) when the viewer userId no longer exists', async () => {
+    // A stale JWT session can reference a user row that was since deleted (e.g.
+    // after a dev db reset). Inserting the view FK-violates on userId — a
+    // best-effort view counter must never crash the reader over that.
+    const author = await createUser();
+    const story = await createStory({ authorId: author.id });
+    const chapter = await createChapter({ storyId: story.id, authorId: author.id });
+    const staleUserId = 'user-that-no-longer-exists';
+
+    const result = await recordView({
+      chapterId: chapter.id,
+      viewerKey: `user:${staleUserId}`,
+      userId: staleUserId,
+      authorId: chapter.authorId
+    });
+
+    expect(result.counted).toBe(false);
+    const updated = await db.chapter.findUnique({ where: { id: chapter.id } });
+    expect(updated?.viewCount).toBe(0);
+    const view = await db.chapterView.findUnique({
+      where: { chapterId_viewerKey: { chapterId: chapter.id, viewerKey: `user:${staleUserId}` } }
+    });
+    expect(view).toBeNull();
+  });
+
   it('counts distinct user and device viewer keys separately', async () => {
     const author = await createUser();
     const story = await createStory({ authorId: author.id });

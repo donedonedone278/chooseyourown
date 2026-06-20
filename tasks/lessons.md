@@ -168,3 +168,28 @@ condition-skipped in WSL, the latter wasn't installed). Diagnosis was empirical:
 **Fix (persistent):** a one-shot systemd unit re-registering the handler after the mount.
 Documented in `scripts/README.md` → "Troubleshooting." Immediate unstick:
 `sudo sh -c 'echo ":WSLInterop:M::MZ::/init:PF" > /proc/sys/fs/binfmt_misc/register'`.
+
+## After `db:reset` (or any dev.db delete), restart the dev server (2026-06-20)
+
+**Self-caught during the prisma-migrate adoption:** after `npm run db:reset` rebuilt
+`prisma/dev.db`, all 14 sign-up-based e2e specs failed at "Signed in as <name>". The migrate
+change was a red herring — unit tests (which use `test.db`) were green. The cause: a
+background `npm run dev:phone` started earlier in the session still held an **open SQLite
+handle to the now-deleted `dev.db` inode**. Playwright's `reuseExistingServer: true` reused
+that zombie server, whose auth/db writes went to the unlinked ghost file, so no user ever
+appeared signed in.
+- **Rule:** deleting/recreating the SQLite db file (`db:reset`, manual `rm dev.db`, a fresh
+  `migrate`) **invalidates any running dev server's connection** — restart the dev server
+  afterward. `db-reset.sh` now warns when a server is up on :3000.
+- **Debugging tell:** a broad e2e failure where *only* dev-server/e2e specs break while
+  unit/`test.db` specs pass points at the **dev.db / running-server**, not the code under
+  change. Check for a stale `next dev` before suspecting the diff.
+- Ties to the dev-loop: the orchestrator owns the `dev:phone` process — after a `db:reset`,
+  relaunch it so phone testing hits the fresh db too.
+- **Stale browser sessions, same cause:** the app uses stateless JWT auth, so a reset also
+  leaves any already-signed-in browser holding a JWT for a now-deleted user row. The user
+  hit this — reading a chapter crashed with `prisma.chapterView.create()` "Foreign key
+  constraint violated" (the view's `userId` FK pointed at the deleted user). After a reset,
+  sign out/in for a clean session. **Hardened the code too:** `recordView` now treats `P2003`
+  (FK violation) as a quiet no-op like `P2002`, since a best-effort view counter must never
+  crash the reader — see `src/lib/views.ts` + its test.

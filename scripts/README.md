@@ -10,6 +10,11 @@ the `http://<windows-LAN-IP>:3000` URL to open on a phone on the same wifi. Also
 sanity-checks the Windows port-forward and warns if it's stale or missing. This is the
 standard way to run the app for phone testing — `npm run dev` stays localhost-only.
 
+Server output (stdout+stderr) is teed to **`next-dev.log`** (repo root, gitignored, fresh
+each start) so a server-side crash is always inspectable without restarting — when a request
+500s, `grep -iE 'error|⨯' next-dev.log` (or just `tail -50 next-dev.log`) surfaces the stack.
+The orchestrator should read it there when diagnosing a runtime error on the running app.
+
 ## `phone-url.sh` — `npm run phone:url`
 
 Prints **just** the phone URL (`http://<windows-LAN-IP>:3000`) and exits — no server.
@@ -24,6 +29,17 @@ Low-noise `npm test`: runs the same gate (lint → typecheck → unit → e2e, f
 prints one `✓ <stage>` line per stage on success and dumps output **only** for the stage
 that fails. Use it when you just want pass/fail plus the first failure without scrolling;
 `npm test` still prints everything. Self-contained (sets the Volta PATH itself).
+
+## `db-reset.sh` — `npm run db:reset`
+
+Rebuilds the local **dev** database from scratch and loads the demo/dummy data in one
+repeatable step: drop `prisma/dev.db*` → `prisma migrate deploy` (apply all committed
+migrations) → `prisma db seed`. Use it for first-time setup or whenever you want a clean,
+known dev db. Idempotent and safe to re-run. Sets both the Volta PATH and `node_modules/.bin`
+(so Prisma can spawn the `tsx` seed). Deliberately the explicit delete → deploy → seed form
+rather than `prisma migrate reset --force` — non-interactive, no confirmation prompt, and it
+never trips the agent-blocked reset path. Schema changes themselves go through
+`npx prisma migrate dev --name <desc>` (see `CLAUDE.md` → Environment); `db push` is retired.
 
 ## `claim.sh` — `npm run claim <feat/initials-name>`
 
