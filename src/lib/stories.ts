@@ -8,7 +8,7 @@ export async function getStoryOverview(storyId: string) {
   const story = await db.story.findUnique({
     where: { id: storyId },
     include: {
-      author: { select: { displayName: true } },
+      author: { select: { displayName: true, username: true } },
       chapters: {
         where: { deletedAt: null },
         select: { id: true, parentChapterId: true, authorId: true }
@@ -29,6 +29,7 @@ export async function getStoryOverview(storyId: string) {
   return {
     title: story.title,
     authorName: story.author.displayName,
+    authorUsername: story.author.username,
     rootChapterId: story.rootChapterId,
     chapterCount: story.chapters.length,
     endingCount,
@@ -42,6 +43,6 @@ export async function listRecentChapters(limit = 20) {
     where: { deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: limit,
-    include: { story: true }
+    include: { story: true, author: { select: { displayName: true, username: true } } }
   });
 }

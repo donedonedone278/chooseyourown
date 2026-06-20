@@ -1,0 +1,84 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+
+import { Stat } from '@/components/ui/stat';
+import { getUserProfileByHandle } from '@/lib/users';
+import styles from './profile.module.css';
+
+const SORTS = ['new', 'likes'] as const;
+type Sort = (typeof SORTS)[number];
+
+function isSort(value: string | undefined): value is Sort {
+  return SORTS.includes(value as Sort);
+}
+
+export default async function UserProfilePage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ handle: string }>;
+  searchParams: Promise<{ sort?: string }>;
+}) {
+  const { handle } = await params;
+  const { sort: rawSort } = await searchParams;
+  const sort: Sort = isSort(rawSort) ? rawSort : 'new';
+
+  const profile = await getUserProfileByHandle(handle);
+  if (!profile) {
+    notFound();
+  }
+
+  const chapters = sort === 'likes' ? profile.chaptersMostLiked : profile.chaptersNewest;
+
+  return (
+    <main className={styles.profile}>
+      <h1>{profile.displayName}</h1>
+      <p className={styles.handle}>@{profile.username}</p>
+
+      <div className={styles.stats}>
+        <Stat kind="chapters" value={profile.stats.chapters} />
+        <Stat kind="stories" value={profile.stats.stories} />
+        <Stat kind="likes" value={profile.stats.likesReceived} />
+        <Stat kind="views" value={profile.stats.views} />
+      </div>
+
+      <nav className={styles.tabs} aria-label="Sort chapters">
+        <Link
+          href={`/users/${profile.username}?sort=new`}
+          className={sort === 'new' ? styles.tabActive : styles.tab}
+          aria-current={sort === 'new' ? 'page' : undefined}
+        >
+          Newest
+        </Link>
+        <Link
+          href={`/users/${profile.username}?sort=likes`}
+          className={sort === 'likes' ? styles.tabActive : styles.tab}
+          aria-current={sort === 'likes' ? 'page' : undefined}
+        >
+          Most liked
+        </Link>
+      </nav>
+
+      {chapters.length === 0 ? (
+        <p className={styles.empty}>No chapters yet.</p>
+      ) : (
+        <ul className={styles.list}>
+          {chapters.map((chapter) => (
+            <li key={chapter.id} className={styles.item}>
+              <Link
+                href={`/stories/${chapter.storyId}/chapters/${chapter.id}`}
+                className={styles.itemTitle}
+              >
+                {chapter.title}
+              </Link>
+              <span className={styles.itemStats}>
+                <Stat kind="likes" value={chapter.likeCount} />
+                <Stat kind="views" value={chapter.viewCount} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}

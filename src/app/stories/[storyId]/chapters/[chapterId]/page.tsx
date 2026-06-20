@@ -45,6 +45,7 @@ export default async function ChapterPage({
       title={chapter.title}
       content={chapter.content}
       storyTitle={chapter.story.title}
+      author={chapter.author}
       choices={chapter.childChapters.map((choice) => ({
         id: choice.id,
         title: choice.title,

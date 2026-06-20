@@ -12,15 +12,17 @@ export default async function StoryPage({ params }: { params: Promise<{ storyId:
     notFound();
   }
 
-  const { title, authorName, rootChapterId, chapterCount, endingCount, contributorCount } = story;
+  const { title, authorName, authorUsername, rootChapterId, chapterCount, endingCount, contributorCount } =
+    story;
 
   return (
     <main className={styles.cover}>
       <h1>{title}</h1>
       <p className={styles.stats}>
-        by {authorName} · {chapterCount} chapter{chapterCount === 1 ? '' : 's'} ·{' '}
-        {endingCount} ending{endingCount === 1 ? '' : 's'} · {contributorCount} writer
-        {contributorCount === 1 ? '' : 's'}
+        by{' '}
+        {authorUsername ? <Link href={`/users/${authorUsername}`}>{authorName}</Link> : authorName} ·{' '}
+        {chapterCount} chapter{chapterCount === 1 ? '' : 's'} · {endingCount} ending
+        {endingCount === 1 ? '' : 's'} · {contributorCount} writer{contributorCount === 1 ? '' : 's'}
       </p>
       {rootChapterId ? (
         <Link href={`/stories/${storyId}/chapters/${rootChapterId}`} className={`btn btn--primary ${styles.begin}`}>
