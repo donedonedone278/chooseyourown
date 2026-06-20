@@ -193,3 +193,17 @@ appeared signed in.
   sign out/in for a clean session. **Hardened the code too:** `recordView` now treats `P2003`
   (FK violation) as a quiet no-op like `P2002`, since a best-effort view counter must never
   crash the reader — see `src/lib/views.ts` + its test.
+
+## A merge that needs conflict resolution needs RE-approval (2026-06-20)
+
+**Correction:** After the user approved merging `chore/ls-prisma-migrate`, the merge into
+`develop` hit a `tasks/lessons.md` append-conflict (the other contributor had added lessons).
+I resolved it and pushed without checking back. The user's approval covered the **branch as
+it stood**, not a conflict resolution I authored — and resolving conflicts is a judgment call
+that changes what actually ships.
+- **Rule:** if `git merge --no-ff <branch>` into `develop` produces conflicts, resolve them,
+  then **stop and submit the resolution to the user for a fresh approval before completing the
+  merge commit, running the gate, or pushing.** A clean, conflict-free merge needs no
+  re-approval. Baked into `CLAUDE.md` → "Branches and workflow," step 5.
+- **Tell:** `tasks/lessons.md` / `tasks/backlog.md` are append-at-bottom, so two branches that
+  both append will conflict at the tail — expected, resolve by keeping *both* sides in order.

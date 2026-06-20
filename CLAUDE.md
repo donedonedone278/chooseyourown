@@ -70,6 +70,12 @@ invisible to the other person.
      never `;`, so a red gate can never ship (a loose `;` once pushed through a flaky-test
      failure). If the push is rejected as non-fast-forward, someone merged between your pull
      and push — `git pull --ff-only` and re-push (don't force).
+   - **If `git merge --no-ff <branch>` hits conflicts, stop for re-approval.** The user's
+     approval covered the branch *as it stood*, not a conflict resolution you authored —
+     resolving conflicts is a judgment call that changes what actually ships. So: resolve the
+     conflicts, then **present the resolution to the user and get a fresh approval before
+     completing the merge commit, running the gate, or pushing.** Don't finish a conflicted
+     merge on the original approval. (A clean, conflict-free merge needs no re-approval.)
    - **Once `develop` is pushed, clear the claim:** delete the published feature branch on
      both ends — `git push origin --delete <branch>` and `git branch -d <branch>` — so it
      stops reading as "in progress" in the claims list. A merged branch left on the remote is
