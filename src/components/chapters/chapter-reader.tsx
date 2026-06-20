@@ -13,6 +13,7 @@ type Choice = { id: string; title: string; likeCount: number; read: boolean };
 export function ChapterReader({
   storyId,
   chapterId,
+  parentChapterId,
   title,
   content,
   storyTitle,
@@ -27,6 +28,7 @@ export function ChapterReader({
 }: {
   storyId: string;
   chapterId: string;
+  parentChapterId: string | null;
   title: string;
   content: string;
   storyTitle: string;
@@ -46,6 +48,16 @@ export function ChapterReader({
         <p className={styles.breadcrumb}>
           From <Link href={`/stories/${storyId}`}>{storyTitle}</Link>
         </p>
+        {parentChapterId ? (
+          <Link
+            href={`/stories/${storyId}/chapters/${parentChapterId}`}
+            className={styles.backLink}
+            data-testid="back-to-parent"
+            aria-label="Back to the parent chapter"
+          >
+            ← Back
+          </Link>
+        ) : null}
         <h1>{title}</h1>
         <div className={styles.body}>
           <MarkdownContent markdown={content} />

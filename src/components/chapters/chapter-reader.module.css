@@ -13,6 +13,20 @@
   color: var(--text-muted);
 }
 
+.backLink {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+@media (hover: hover) {
+  .backLink:hover {
+    color: var(--accent);
+  }
+}
+
 .body {
   font-size: var(--step-1);
 }
