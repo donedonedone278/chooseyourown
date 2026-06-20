@@ -5,7 +5,7 @@ import { recordProfileView } from '@/lib/profile-views';
 import { createUser } from '@/test/factories';
 
 describe('recordProfileView', () => {
-  it('increments profileViewCount once for a new non-owner viewer', async () => {
+  it('signed-in non-owner (user:<id> key) increments profileViewCount', async () => {
     const profileOwner = await createUser();
     const viewer = await createUser();
 
