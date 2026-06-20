@@ -1,33 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import {
-  Heart,
-  Laugh,
-  Rocket,
-  Search,
-  Skull,
-  Wand,
-  type LucideIcon
-} from 'lucide-react';
 
 import {
   addChapterTagAction,
   removeChapterTagAction,
   suggestTagsAction
 } from '@/actions/tag-actions';
+import { officialTagIcon } from '@/components/ui/icons';
 import styles from './chapter-tags.module.css';
-
-// Minimal local mapping from a seeded official tag's icon name to its glyph.
-// The plan notes a shared <Stat>/icon component lands later; swap to it then.
-const ICONS: Record<string, LucideIcon> = {
-  Skull: Skull,
-  Heart: Heart,
-  Search: Search,
-  Laugh: Laugh,
-  Wand: Wand,
-  Rocket: Rocket
-};
 
 /**
  * Keep the add-tag field in the canonical `lowercase_with_underscores` form as
@@ -114,7 +95,7 @@ export function ChapterTags({
     <section aria-label="Tags" className={styles.section}>
       <ul className={styles.list}>
         {tags.map((tag) => {
-          const Icon = tag.isOfficial && tag.icon ? ICONS[tag.icon] : undefined;
+          const Icon = tag.isOfficial ? officialTagIcon(tag.icon) : undefined;
           return (
             <li key={tag.chapterTagId} className={`${styles.tag} ${tag.isOfficial ? styles.officialTag : ''}`}>
               {Icon ? <Icon size={14} aria-hidden="true" /> : null}

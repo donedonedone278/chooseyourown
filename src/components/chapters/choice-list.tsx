@@ -3,6 +3,7 @@
 import Link from 'next/link';
 
 import { useLocalReadIds } from '@/components/chapters/read-marker';
+import { Stat } from '@/components/ui/stat';
 import styles from './chapter-reader.module.css';
 
 export type ChoiceItem = { id: string; title: string; likeCount: number; read: boolean };
@@ -40,7 +41,7 @@ export function ChoiceList({
             </Link>
             <span className={styles.choiceLikes}>
               {read ? <span className="sr-only">Read. </span> : null}
-              {choice.likeCount} {choice.likeCount === 1 ? 'like' : 'likes'}
+              <Stat kind="likes" value={choice.likeCount} />
             </span>
           </li>
         );

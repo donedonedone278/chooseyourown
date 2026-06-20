@@ -24,9 +24,9 @@ test('views increment per unique viewer (author excluded, idempotent on reload) 
   const main = page.locator('main');
 
   // Author viewing their own chapter does not bump the count.
-  await expect(main.getByText('0 views')).toBeVisible();
+  await expect(main.getByLabel('0 views')).toBeVisible();
   await page.reload();
-  await expect(main.getByText('0 views')).toBeVisible();
+  await expect(main.getByLabel('0 views')).toBeVisible();
 
   // Reader A opens the chapter — 1 view.
   const contextA = await browser.newContext();
@@ -40,11 +40,11 @@ test('views increment per unique viewer (author excluded, idempotent on reload) 
 
   await pageA.goto(url);
   const mainA = pageA.locator('main');
-  await expect(mainA.getByText('1 view', { exact: true })).toBeVisible();
+  await expect(mainA.getByLabel('1 view', { exact: true })).toBeVisible();
 
   // Reload by the same reader stays idempotent — still 1 view.
   await pageA.reload();
-  await expect(mainA.getByText('1 view', { exact: true })).toBeVisible();
+  await expect(mainA.getByLabel('1 view', { exact: true })).toBeVisible();
 
   // Reader B opens the chapter — 2 views.
   const contextB = await browser.newContext();
@@ -58,7 +58,7 @@ test('views increment per unique viewer (author excluded, idempotent on reload) 
 
   await pageB.goto(url);
   const mainB = pageB.locator('main');
-  await expect(mainB.getByText('2 views')).toBeVisible();
+  await expect(mainB.getByLabel('2 views')).toBeVisible();
 
   // After reading, the chapter shows as read in Bailey's feed on revisit
   // (visual: the card carries the read marker rather than the literal "Read" text).
@@ -149,11 +149,11 @@ test('a logged-out visitor can open a chapter without a deviceId cookie yet, vie
   expect(response?.status()).toBe(200);
 
   const anonMain = anonPage.locator('main');
-  await expect(anonMain.getByText('1 view', { exact: true })).toBeVisible();
+  await expect(anonMain.getByLabel('1 view', { exact: true })).toBeVisible();
 
   // Same anonymous context reloading stays idempotent — still 1 view.
   await anonPage.reload();
-  await expect(anonMain.getByText('1 view', { exact: true })).toBeVisible();
+  await expect(anonMain.getByLabel('1 view', { exact: true })).toBeVisible();
 
   // After opening, the chapter shows as read in this context's feed
   // (logged-out localStorage path via MarkChapterRead / useLocalReadIds);
