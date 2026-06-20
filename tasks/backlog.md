@@ -363,3 +363,28 @@ chapters' should also be a symbol, as should views."
 component so the vocabulary stays consistent across choice cards, feed, profiles?
 **Sketch / notes:** cross-cutting convention, not a standalone feature — shapes "Richer
 choice cards", "Home feed enrichment", "Chapter view counter", likes UI, and profiles.
+**Status update (2026-06-19):** shipped the infra on `feat/rs-symbols-stat` — shared
+`<Stat>` + icon vocabulary (`STAT_KINDS`: likes=Heart, views=Eye, descendants=GitFork),
+migrated the like-count sites + the official-tag glyph map. Likes also gained a "picked"
+state: the Heart **fills red with a black outline** when the viewer has liked. Views/
+descendants kinds are defined but not yet consumed (await their own waves).
+
+## Bookmark / save-for-later  — _status: raw_
+**The idea:** "Could there also be a bookmark button using the bookmark symbol? The fill
+color would be a blue." (Distinct from likes: a like is public appreciation; a bookmark is a
+private "save this chapter to come back to.")
+**Why / value:** lets readers privately save chapters to return to later, independent of the
+public like signal — useful in a deep branching tree where it's easy to lose a spot.
+**Open questions:**
+- **Viewing surface:** is the first pass just the per-chapter toggle (saved state persists),
+  or does it also ship a **"My bookmarks" page** listing saved chapters? (A toggle with
+  nowhere to view saves is only half-useful.)
+- Bookmarks on **chapters** (matches likes/views granularity) or on **stories**? Lean:
+  chapters.
+- Should the bookmark state surface in option-select / feed cards, or only in the reader?
+- Signed-in only (needs an account to attach the save to) — confirm.
+**Sketch / notes:** mirrors `ChapterLike` — a `ChapterBookmark(chapterId, userId)` join with
+`@@unique([chapterId, userId])`, a toggle server action, and a `bookmark` entry added to the
+symbols-over-words `STAT_KINDS` vocabulary: **Bookmark** glyph, picked state = **blue fill**
+(parallels the red-fill Heart for likes). Reuses the `<Stat active>` accent mechanism already
+built on `feat/rs-symbols-stat`. Graduates to its own `feat/<initials>-bookmark` branch.

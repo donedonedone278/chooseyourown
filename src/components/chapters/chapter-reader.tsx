@@ -6,6 +6,7 @@ import { ChoiceList } from '@/components/chapters/choice-list';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
 import { MarkChapterRead } from '@/components/chapters/read-marker';
 import { ReportChapter } from '@/components/chapters/report-chapter';
+import { Stat } from '@/components/ui/stat';
 import styles from './chapter-reader.module.css';
 
 type Choice = { id: string; title: string; likeCount: number; read: boolean };
@@ -64,12 +65,8 @@ export function ChapterReader({
         </div>
 
         <section aria-label="Reactions" className={styles.reactions}>
-          <p className={styles.likeCount}>
-            Liked by {likeCount} {likeCount === 1 ? 'reader' : 'readers'}
-          </p>
-          <p className={styles.viewCount}>
-            {viewCount} {viewCount === 1 ? 'view' : 'views'}
-          </p>
+          <Stat kind="likes" value={likeCount} active={viewerHasLiked} className={styles.likeCount} />
+          <Stat kind="views" value={viewCount} className={styles.viewCount} />
           {isSignedIn ? (
             <form action={likeChapterAction.bind(null, chapterId, storyId)}>
               <button type="submit" className={`btn ${styles.likeButton}`} disabled={viewerHasLiked}>

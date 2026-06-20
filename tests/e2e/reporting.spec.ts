@@ -18,9 +18,9 @@ test('a signed-in reader can like a chapter and report it', async ({ page }) => 
   await expect(page.getByRole('heading', { name: `Chapter ${stamp}` })).toBeVisible();
 
   // Like → count goes 0 → 1 and the button reads "Liked".
-  await expect(page.locator('main').getByText('Liked by 0 readers')).toBeVisible();
+  await expect(page.locator('main').getByLabel('0 likes')).toBeVisible();
   await page.locator('main').getByRole('button', { name: 'Like' }).click();
-  await expect(page.locator('main').getByText('Liked by 1 reader')).toBeVisible();
+  await expect(page.locator('main').getByLabel('1 like')).toBeVisible();
   await expect(page.locator('main').getByRole('button', { name: 'Liked' })).toBeDisabled();
 
   // Report → confirmation message.
