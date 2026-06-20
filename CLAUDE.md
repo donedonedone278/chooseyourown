@@ -54,8 +54,10 @@ own branch, and pushes.
      holds only the *current* feature's plan; `tasks/lessons.md` is the durable record.
    - Then `git checkout develop && git pull --ff-only` (pick up the other contributor's
      merges), `git merge --no-ff <branch>`, run `npm test` once on the integrated result,
-     and `git push`. If the push is rejected as non-fast-forward, someone merged between
-     your pull and push — `git pull --ff-only` and re-push (don't force).
+     and `git push` **only if the gate is green** — chain the gate and the push with `&&`,
+     never `;`, so a red gate can never ship (a loose `;` once pushed through a flaky-test
+     failure). If the push is rejected as non-fast-forward, someone merged between your pull
+     and push — `git pull --ff-only` and re-push (don't force).
 
 **Authorization:** commit freely *on the feature branch* to checkpoint progress without
 asking. **Do not merge into `develop` without explicit user approval.** Always ask before

@@ -25,17 +25,33 @@ test('WYSIWYG editor supports paragraphs, bold/italic, and a Markdown view', asy
 
   // Click into each paragraph and select its full line (each paragraph is
   // a single word here), then apply formatting via the toolbar.
+  //
+  // The toolbar's `aria-pressed` reflects the marks active at the current
+  // selection (editor.isActive(...)). Asserting it *before* toggling is the
+  // sync point: it waits until the selection has actually propagated into the
+  // editor, so the mark lands on the intended paragraph instead of a stale
+  // selection. Without this, a toolbar click can race the selection and pile
+  // both marks onto FirstPara (observed flake: `***FirstPara***`).
+  const bold = page.getByRole('button', { name: 'Bold' });
+  const italic = page.getByRole('button', { name: 'Italic' });
+
   await editor.getByText('FirstPara').click();
   await page.keyboard.press('Home');
   await page.keyboard.press('Shift+End');
-  await page.getByRole('button', { name: 'Italic' }).click();
-  await expect(page.getByRole('button', { name: 'Italic' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(italic).toHaveAttribute('aria-pressed', 'false'); // plain selection registered
+  await italic.click();
+  await expect(italic).toHaveAttribute('aria-pressed', 'true');
 
   await editor.getByText('SecondPara').click();
   await page.keyboard.press('Home');
   await page.keyboard.press('Shift+End');
-  await page.getByRole('button', { name: 'Bold' }).click();
-  await expect(page.getByRole('button', { name: 'Bold' })).toHaveAttribute('aria-pressed', 'true');
+  // Selection must have moved off the now-italic FirstPara before toggling
+  // bold — italic reading false here proves the caret is on the plain second
+  // paragraph, not the stale first one.
+  await expect(italic).toHaveAttribute('aria-pressed', 'false');
+  await expect(bold).toHaveAttribute('aria-pressed', 'false');
+  await bold.click();
+  await expect(bold).toHaveAttribute('aria-pressed', 'true');
 
   // View Markdown reveals the serialized source.
   await page.getByRole('button', { name: 'View Markdown' }).click();

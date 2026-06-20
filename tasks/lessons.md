@@ -119,3 +119,18 @@ flake on every full-suite run. Two lessons:
   unless the client-nav path is itself what's under test. `revalidatePath` after a
   mutation is the right post-mutation fix regardless — it just isn't deterministically
   e2e-testable under `next dev`.
+
+## Gate the push on a GREEN gate — chain with `&&`, never `;` (2026-06-19)
+
+**Self-caught mistake:** ran `npm run check; ... git push` in one command. The gate
+(`check`) came back **red** (the flaky `editor.spec` again), but because the steps were
+joined with `;`, the `git push` ran anyway — I shipped to `develop` through a red gate.
+A re-run was green (the failure was the known flake, so no broken code actually landed),
+but the push should never have fired.
+- **Rule:** any "gate then publish" sequence (push, merge, deploy) must be `&&`-chained so
+  a non-zero gate aborts the publish — `A && B`, never `A; B`. Better still, run the gate
+  as its own step, read the result, *then* push as a separate command.
+- **Deeper fix:** a gate that *intermittently* goes red is what makes this dangerous —
+  hardened the `editor.spec` selection race (wait for the toolbar `aria-pressed` to reflect
+  the selection before toggling a mark) so the gate is deterministic. Flaky gate + loose
+  shell chaining = bad pushes; fixed both.
