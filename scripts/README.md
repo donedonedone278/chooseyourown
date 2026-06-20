@@ -10,6 +10,11 @@ the `http://<windows-LAN-IP>:3000` URL to open on a phone on the same wifi. Also
 sanity-checks the Windows port-forward and warns if it's stale or missing. This is the
 standard way to run the app for phone testing — `npm run dev` stays localhost-only.
 
+Server output (stdout+stderr) is teed to **`next-dev.log`** (repo root, gitignored, fresh
+each start) so a server-side crash is always inspectable without restarting — when a request
+500s, `grep -iE 'error|⨯' next-dev.log` (or just `tail -50 next-dev.log`) surfaces the stack.
+The orchestrator should read it there when diagnosing a runtime error on the running app.
+
 ## `phone-url.sh` — `npm run phone:url`
 
 Prints **just** the phone URL (`http://<windows-LAN-IP>:3000`) and exits — no server.
