@@ -6,6 +6,7 @@
     "dev:phone": "bash scripts/dev-phone.sh",
     "phone:url": "bash scripts/phone-url.sh",
     "where": "bash scripts/where.sh",
+    "claim": "bash scripts/claim.sh",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

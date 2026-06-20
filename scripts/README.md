@@ -25,13 +25,26 @@ prints one `✓ <stage>` line per stage on success and dumps output **only** for
 that fails. Use it when you just want pass/fail plus the first failure without scrolling;
 `npm test` still prints everything. Self-contained (sets the Volta PATH itself).
 
+## `claim.sh` — `npm run claim <feat/initials-name>`
+
+Claims a backlog ticket by **publishing its feature branch**. Syncs `develop`
+(`git pull --ff-only`), refuses the name if it's already an active claim on the remote,
+creates the branch, and `git push -u`s it so the other contributor can see the ticket is
+taken — a published `feat/*`/`fix/*`/`chore/*` branch **is** the claim (see `CLAUDE.md` →
+"Branches and workflow"). Only `feat/`, `fix/`, `chore/` prefixes are accepted, so claims
+stay greppable. Run it the moment you pick up a ticket, before writing any code; an unpushed
+branch is an invisible claim. (Cleanup is the inverse — delete the remote branch on merge,
+per the workflow's step 5.)
+
 ## `where.sh` — `npm run where`
 
 One-shot **"where were we?"** orientation snapshot for resuming a session: current branch,
 uncommitted changes, recent commits, any local branches with work not yet merged into
-`develop`, whether `tasks/todo.md` holds an active plan, and whether the dev server is up.
-Read-only, safe anytime. Pairs with the `current-work` handoff memory (intent/next-step) so
-a reopened session can be re-oriented quickly.
+`develop`, the **active claims** (published `feat/*`/`fix/*`/`chore/*` branches on the remote
+— who's on what, so you don't double-claim), whether `tasks/todo.md` holds an active plan,
+and whether the dev server is up. Read-only (it does a prune-fetch to refresh the claim list,
+but never touches your working tree), safe anytime. Pairs with the `current-work` handoff
+memory (intent/next-step) so a reopened session can be re-oriented quickly.
 
 ## `volta-env.sh` — (sourced, no npm alias)
 

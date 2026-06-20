@@ -38,6 +38,24 @@ done
 [ "$found" -eq 0 ] && echo "(none — every local branch is merged into develop)"
 
 echo
+echo "## Active claims (published feat/*, fix/*, chore/* branches)"
+# A branch on the remote = that ticket is taken (see CLAUDE.md -> "Branches and
+# workflow"). Fetch+prune so the list reflects what's actually published now.
+git fetch -p origin >/dev/null 2>&1 || true
+current="$(git branch --show-current)"
+claims=0
+for r in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin); do
+  short="${r#origin/}"
+  case "$short" in feat/*|fix/*|chore/*) ;; *) continue ;; esac
+  ahead=$(git rev-list --count "origin/develop..$r" 2>/dev/null || echo '?')
+  mark=""
+  [ "$short" = "$current" ] && mark="  ← you are here"
+  echo "  - $short ($ahead commit(s) ahead of develop)$mark"
+  claims=1
+done
+[ "$claims" -eq 0 ] && echo "(none published — remember to 'npm run claim' when you pick a ticket)"
+
+echo
 echo "## tasks/todo.md"
 if grep -q "<none in progress>" tasks/todo.md 2>/dev/null; then
   echo "placeholder — no feature plan in flight"
