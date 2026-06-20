@@ -86,6 +86,7 @@ npm run test:unit      # Vitest: domain/unit tests
 npm run test:e2e       # Playwright: browser journeys (chromium)
 npm test               # full local gate: lint → typecheck → unit → e2e (fail-fast)
 npm run check          # same gate, low-noise: one ✓ line per stage, output only for a failure
+npm run where          # "where were we?" snapshot: branch, uncommitted, recent commits, unmerged branches, todo + server state
 ```
 
 `npm test` is the single pre-commit gate. Run it before committing; each stage is also runnable standalone (above). `npm run check` is the quieter variant for the same gate.

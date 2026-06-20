@@ -25,6 +25,14 @@ prints one `✓ <stage>` line per stage on success and dumps output **only** for
 that fails. Use it when you just want pass/fail plus the first failure without scrolling;
 `npm test` still prints everything. Self-contained (sets the Volta PATH itself).
 
+## `where.sh` — `npm run where`
+
+One-shot **"where were we?"** orientation snapshot for resuming a session: current branch,
+uncommitted changes, recent commits, any local branches with work not yet merged into
+`develop`, whether `tasks/todo.md` holds an active plan, and whether the dev server is up.
+Read-only, safe anytime. Pairs with the `current-work` handoff memory (intent/next-step) so
+a reopened session can be re-oriented quickly.
+
 ## `volta-env.sh` — (sourced, no npm alias)
 
 `export PATH="$HOME/.volta/bin:$PATH"` so **non-interactive** shells (CI, scripts, the
