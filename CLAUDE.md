@@ -30,13 +30,25 @@ plan: chapter content is **Markdown** (not Tiptap/JSON), and **Volta** pins Node
 **Two people contribute concurrently**, so `develop` moves under you — always treat
 `origin/develop` as the source of truth and re-sync before you branch and before you merge.
 Integration stays **local** (no PR flow): each contributor pulls `develop`, merges their
-own branch, and pushes.
+own branch, and pushes. Feature branches *are* pushed, but only as a **claim signal +
+offsite backup** — not for review: **a published `feat/*`/`fix/*`/`chore/*` branch on the
+remote means that ticket is taken.** So before picking a ticket, `git fetch -p` and check
+the active claims (`npm run where` lists them); when you pick one, publish the branch
+immediately (`npm run claim` — see step 1); and when it merges, delete the remote branch so
+the claim clears (step 5). This is how two concurrent contributors avoid grabbing the same
+work — there's no other live signal, since a branch that never leaves your machine is
+invisible to the other person.
 
 **For every enhancement or feature, follow this loop:**
-1. **Sync, then branch from `develop`** — `git checkout develop && git pull --ff-only`
-   first so you're not basing on a stale tree, then branch
-   `feat/<initials>-<short-name>` or `fix/<initials>-<short-name>` (initials prefix so two
-   contributors don't collide on the same branch name).
+1. **Check claims, then sync + branch + publish the claim.** First `git fetch -p` and look
+   at the active claims (`npm run where`, or `git branch -r`) so you don't grab a ticket the
+   other contributor already started. Then **`npm run claim feat/<initials>-<short-name>`**
+   (or `fix/…`) — it syncs `develop` (`git pull --ff-only`, so you're not on a stale tree),
+   refuses the name if it's already claimed on the remote, creates the branch, and
+   `git push -u`s it to **publish the claim** before you write a line of code. (Initials
+   prefix so two contributors don't collide on a name.) Doing it by hand is fine too; the
+   non-negotiable part is **push the branch as soon as you claim the ticket** — an unpushed
+   branch is an invisible claim.
 2. **Write a plan** for the change (an implementation plan an agent can execute) into
    `tasks/todo.md`. The plan lives **only on the feature branch** — see step 5; it never
    reaches `develop`, so two in-flight features never fight over this file.
@@ -58,6 +70,10 @@ own branch, and pushes.
      never `;`, so a red gate can never ship (a loose `;` once pushed through a flaky-test
      failure). If the push is rejected as non-fast-forward, someone merged between your pull
      and push — `git pull --ff-only` and re-push (don't force).
+   - **Once `develop` is pushed, clear the claim:** delete the published feature branch on
+     both ends — `git push origin --delete <branch>` and `git branch -d <branch>` — so it
+     stops reading as "in progress" in the claims list. A merged branch left on the remote is
+     a stale claim that makes the next picker think the ticket is still taken.
 
 **Authorization:** commit freely *on the feature branch* to checkpoint progress without
 asking. **Do not merge into `develop` without explicit user approval.** Always ask before
