@@ -119,3 +119,37 @@ flake on every full-suite run. Two lessons:
   unless the client-nav path is itself what's under test. `revalidatePath` after a
   mutation is the right post-mutation fix regardless — it just isn't deterministically
   e2e-testable under `next dev`.
+
+## A "phone can't reach it" is often a wedged server, not the network (2026-06-19)
+
+**Self-caught detour:** The phone (and then the Windows host browser) couldn't load
+`http://<LAN-IP>:3000`. The instinct was to debug the Windows `portproxy` / firewall, but
+those were correct — they were faithfully forwarding to a **dead upstream**. A long-lived
+`dev:phone` started many turns earlier had wedged: the socket was still `LISTEN` on
+`0.0.0.0:3000`, yet `curl localhost:3000` returned `000` and `ss` showed a growing
+**`Recv-Q` backlog** (connections piling up unaccepted). Killing it and relaunching fixed
+everything instantly.
+
+**Rule — bisect the hops before touching Windows networking.** Check the upstream first:
+`curl -m5 localhost:3000` **and** `curl -m5 <wsl-eth0-ip>:3000` (the exact address
+`portproxy` targets — get it from `wsl hostname -I` / the portproxy table). Both should be
+`200`. A `LISTEN` socket with nonzero `Recv-Q` = a hung server, *not* a firewall problem.
+Only once the upstream serves locally is it worth looking at portproxy/firewall. Corollary:
+a `dev:phone` that's been up across many turns can wedge — relaunch it rather than assuming
+the LAN setup rotted. See `scripts/README.md` → "Troubleshooting."
+
+## WSL2 + systemd intermittently drops the `WSLInterop` binfmt handler (2026-06-19)
+
+**Environment gotcha (not the app):** `explorer.exe` / `e .` / running a `.ps1` suddenly
+failed with `cannot execute binary file: Exec format error`, having worked days earlier.
+Cause: with `systemd=true` in `/etc/wsl.conf`, WSL's `/init` registers the `WSLInterop`
+binfmt handler very early while systemd (re)mounts `proc-sys-fs-binfmt_misc` around the
+same time — a **boot race**. When systemd's mount wins, it wipes the entry, so Windows
+`.exe` interop breaks **intermittently** (some boots fine, some not). It is *not* distro
+staleness, and `systemd-binfmt.service` / `binfmt-support` aren't involved (the former is
+condition-skipped in WSL, the latter wasn't installed). Diagnosis was empirical:
+`cat /proc/sys/fs/binfmt_misc/WSLInterop` was absent though `status` was `enabled`.
+
+**Fix (persistent):** a one-shot systemd unit re-registering the handler after the mount.
+Documented in `scripts/README.md` → "Troubleshooting." Immediate unstick:
+`sudo sh -c 'echo ":WSLInterop:M::MZ::/init:PF" > /proc/sys/fs/binfmt_misc/register'`.

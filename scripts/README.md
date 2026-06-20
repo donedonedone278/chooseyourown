@@ -73,6 +73,67 @@ Same reason the teardown command below uses it.
 - `wsl-port-forward-setup.ps1` — registers the logon task (item 1, elevated so no
   recurring UAC prompt) and runs the forward once immediately.
 
+## Troubleshooting
+
+### Phone (or even the Windows browser) can't load `http://<LAN-IP>:3000`
+
+Bisect the two hops — **check the upstream before blaming `portproxy`/firewall.** The most
+common cause is a *wedged dev server*, not a networking fault: a long-running `dev:phone`
+can stop serving while its socket stays `LISTEN`, so `portproxy` faithfully forwards to a
+dead upstream and nothing loads anywhere.
+
+1. **Is the WSL server actually serving?** Inside WSL:
+   ```bash
+   curl -m5 -o/dev/null -w '%{http_code}\n' http://127.0.0.1:3000          # want 200
+   curl -m5 -o/dev/null -w '%{http_code}\n' http://$(hostname -I | awk '{print $1}'):3000  # want 200
+   ss -ltn 'sport = :3000'   # LISTEN with Recv-Q 0; a nonzero Recv-Q backlog = wedged
+   ```
+   `000` or a piling `Recv-Q` means the server is hung — kill it and relaunch:
+   ```bash
+   pkill -9 -f 'next dev'; npm run dev:phone
+   ```
+   The second `curl` matters because `portproxy` targets the **WSL eth0 IP**, not
+   `localhost`; both must answer `200`.
+2. **Only if the upstream serves locally**, check the Windows side (elevated PowerShell):
+   the `portproxy` `connectaddress` must equal the *current* `wsl hostname -I` (WSL's IP
+   drifts across restarts — re-run `wsl-port-forward.ps1` if stale), and the `WSL dev:3000`
+   firewall rule must exist.
+3. **Only if the host browser loads it but the phone doesn't**, it's the wifi: confirm the
+   phone is on the same SSID/subnet and the network isn't using AP/client isolation.
+
+### `cannot execute binary file: Exec format error` running `explorer.exe` / `e .` / a `.ps1`
+
+WSL2 + `systemd=true` intermittently loses the `WSLInterop` binfmt handler at boot (a race
+between WSL's `/init` and systemd mounting `proc-sys-fs-binfmt_misc`). It's flaky by design
+— fine some boots, broken others — and unrelated to the distro version. Confirm with
+`cat /proc/sys/fs/binfmt_misc/WSLInterop` (absent when broken, though `status` says
+`enabled`).
+
+Immediate unstick:
+```bash
+sudo sh -c 'echo ":WSLInterop:M::MZ::/init:PF" > /proc/sys/fs/binfmt_misc/register'
+```
+
+Persistent fix — a one-shot systemd unit that re-registers it after the binfmt mount, only
+if missing, on every boot:
+```bash
+sudo tee /etc/systemd/system/wsl-interop.service >/dev/null <<'EOF'
+[Unit]
+Description=Re-register WSLInterop binfmt handler (WSL+systemd boot race workaround)
+After=proc-sys-fs-binfmt_misc.mount
+ConditionPathExists=/init
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'test -e /proc/sys/fs/binfmt_misc/WSLInterop || echo ":WSLInterop:M::MZ::/init:PF" > /proc/sys/fs/binfmt_misc/register'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable wsl-interop.service
+```
+
 ## Full removal / "delete it one day"
 
 **Step 1 — remove the Windows state (items 1–4).** From an **elevated** PowerShell, run
