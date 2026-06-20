@@ -1,8 +1,10 @@
 import {
+  BookOpen,
   Eye,
   GitFork,
   Heart,
   Laugh,
+  Library,
   Rocket,
   Search,
   Skull,
@@ -13,6 +15,9 @@ import {
 type StatKindDef = {
   icon: LucideIcon;
   noun: string;
+  // Override for nouns with an irregular plural (e.g. "story" -> "stories").
+  // Omit when the default `${noun}s` suffix is correct.
+  plural?: string;
   // When a stat has a viewer-specific "picked" state (e.g. the viewer liked it),
   // the icon fills with this accent instead of rendering as a plain outline.
   accent?: { fill: string; stroke: string };
@@ -23,7 +28,9 @@ type StatKindDef = {
 const STAT_KIND_DEFS = {
   likes: { icon: Heart, noun: 'like', accent: { fill: '#e11d48', stroke: '#111' } },
   views: { icon: Eye, noun: 'view' },
-  descendants: { icon: GitFork, noun: 'continuation' }
+  descendants: { icon: GitFork, noun: 'continuation' },
+  chapters: { icon: BookOpen, noun: 'chapter' },
+  stories: { icon: Library, noun: 'story', plural: 'stories' }
 } satisfies Record<string, StatKindDef>;
 
 export type StatKind = keyof typeof STAT_KIND_DEFS;

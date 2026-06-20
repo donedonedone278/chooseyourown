@@ -17,8 +17,8 @@ export function Stat({
   active?: boolean;
   className?: string;
 }) {
-  const { icon: Icon, noun, accent } = STAT_KINDS[kind];
-  const label = `${value} ${value === 1 ? noun : `${noun}s`}`;
+  const { icon: Icon, noun, plural, accent } = STAT_KINDS[kind];
+  const label = `${value} ${value === 1 ? noun : plural ?? `${noun}s`}`;
   const picked = active ? accent : undefined;
 
   return (

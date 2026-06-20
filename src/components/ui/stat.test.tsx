@@ -31,6 +31,14 @@ describe('Stat', () => {
     expect(screen.getByLabelText('1 continuation')).toBeInTheDocument();
   });
 
+  it('uses an irregular plural when the kind defines one, e.g. story/stories', () => {
+    render(<Stat kind="stories" value={2} />);
+    expect(screen.getByLabelText('2 stories')).toBeInTheDocument();
+
+    render(<Stat kind="stories" value={1} />);
+    expect(screen.getByLabelText('1 story')).toBeInTheDocument();
+  });
+
   it('renders a plain outline when not active', () => {
     render(<Stat kind="likes" value={3} />);
     const icon = screen.getByLabelText('3 likes').querySelector('svg');
