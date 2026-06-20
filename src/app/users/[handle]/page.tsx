@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { recordProfileViewAction } from '@/actions/view-actions';
 import { Stat } from '@/components/ui/stat';
 import { getUserProfileByHandle } from '@/lib/users';
 import styles from './profile.module.css';
@@ -28,6 +29,12 @@ export default async function UserProfilePage({
     notFound();
   }
 
+  // Record-on-open: idempotent, so a refresh never inflates the count. The
+  // stats query above ran before this write, so reflect a freshly-counted
+  // view immediately rather than waiting for the next render.
+  const { counted } = await recordProfileViewAction(profile.id);
+  const views = profile.stats.views + (counted ? 1 : 0);
+
   const chapters = sort === 'likes' ? profile.chaptersMostLiked : profile.chaptersNewest;
 
   return (
@@ -39,7 +46,7 @@ export default async function UserProfilePage({
         <Stat kind="chapters" value={profile.stats.chapters} />
         <Stat kind="stories" value={profile.stats.stories} />
         <Stat kind="likes" value={profile.stats.likesReceived} />
-        <Stat kind="views" value={profile.stats.views} />
+        <Stat kind="views" value={views} />
       </div>
 
       <nav className={styles.tabs} aria-label="Sort chapters">

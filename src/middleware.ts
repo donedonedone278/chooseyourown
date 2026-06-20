@@ -30,5 +30,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/stories/:path*']
+  matcher: ['/stories/:path*', '/users/:path*']
 };

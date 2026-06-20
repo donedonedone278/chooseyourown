@@ -55,7 +55,6 @@ export async function getUserProfileByHandle(handle: string): Promise<UserProfil
   });
 
   const likesReceived = chaptersNewestRaw.reduce((sum, chapter) => sum + chapter._count.likes, 0);
-  const views = chaptersNewestRaw.reduce((sum, chapter) => sum + chapter.viewCount, 0);
 
   return {
     id: user.id,
@@ -65,7 +64,7 @@ export async function getUserProfileByHandle(handle: string): Promise<UserProfil
       chapters: chaptersNewestRaw.length,
       stories: storyCount,
       likesReceived,
-      views
+      views: user.profileViewCount
     },
     chaptersNewest: chaptersNewestRaw.map(toRow),
     chaptersMostLiked: chaptersMostLikedRaw.map(toRow)

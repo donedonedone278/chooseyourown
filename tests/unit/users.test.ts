@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { db } from '@/lib/db';
+import { recordProfileView } from '@/lib/profile-views';
 import { getUserProfileByHandle } from '@/lib/users';
 import { createChapter, createStory, createUser } from '@/test/factories';
 
@@ -36,6 +37,19 @@ describe('getUserProfileByHandle', () => {
     await db.chapter.update({ where: { id: chapterA.id }, data: { viewCount: 3 } });
     await db.chapter.update({ where: { id: chapterB.id }, data: { viewCount: 4 } });
 
+    // Profile views are tracked separately from chapter views (the count of
+    // visits to the profile page itself, not a sum of per-chapter viewCounts).
+    await recordProfileView({
+      profileUserId: author.id,
+      viewerKey: `user:${otherUser.id}`,
+      userId: otherUser.id
+    });
+    await recordProfileView({
+      profileUserId: author.id,
+      viewerKey: `user:${thirdUser.id}`,
+      userId: thirdUser.id
+    });
+
     const profile = await getUserProfileByHandle(author.username);
 
     expect(profile).not.toBeNull();
@@ -45,7 +59,7 @@ describe('getUserProfileByHandle', () => {
       chapters: 2,
       stories: 1,
       likesReceived: 3,
-      views: 7
+      views: 2
     });
 
     // Newest first: B was created after A.
