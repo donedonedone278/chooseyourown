@@ -42,6 +42,45 @@ test('sign-up handle becomes a public profile with stats and the new chapter, by
   await expect(page.locator('main').getByRole('link', { name: rootTitle })).toBeVisible();
 });
 
+test('viewing a profile as a different signed-up user increments its profile-views stat', async ({
+  page
+}) => {
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const ownerHandle = `riley-${Math.random().toString(36).slice(2, 8)}`;
+
+  // Owner signs up — their profile starts at 0 views (no one has visited it yet).
+  await page.goto('/auth/sign-up');
+  await page.getByLabel('Display name').fill('Riley Owner');
+  await page.getByLabel('Handle').fill(ownerHandle);
+  await page.getByLabel('Email').fill(`riley-owner-${stamp}@example.com`);
+  await page.getByLabel('Password').fill('password123');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('Signed in as Riley Owner')).toBeVisible();
+
+  await page.goto(`/users/${ownerHandle}`);
+  await expect(page.locator('main').getByLabel('0 views')).toBeVisible();
+
+  // A different signed-up user visits the profile.
+  const fresh = await page.context().browser()!.newContext();
+  const freshPage = await fresh.newPage();
+  const visitorHandle = `vera-${Math.random().toString(36).slice(2, 8)}`;
+  await freshPage.goto('/auth/sign-up');
+  await freshPage.getByLabel('Display name').fill('Vera Visitor');
+  await freshPage.getByLabel('Handle').fill(visitorHandle);
+  await freshPage.getByLabel('Email').fill(`vera-visitor-${stamp}@example.com`);
+  await freshPage.getByLabel('Password').fill('password123');
+  await freshPage.getByRole('button', { name: 'Create account' }).click();
+  await expect(freshPage.getByText('Signed in as Vera Visitor')).toBeVisible();
+
+  await freshPage.goto(`/users/${ownerHandle}`);
+  await expect(freshPage.locator('main').getByLabel('1 view')).toBeVisible();
+  await fresh.close();
+
+  // The owner's own reload reflects the visitor's view, but not their own.
+  await page.goto(`/users/${ownerHandle}`);
+  await expect(page.locator('main').getByLabel('1 view')).toBeVisible();
+});
+
 test('signing up with an already-taken handle shows an error instead of crashing', async ({ page }) => {
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const handle = `dupe-${Math.random().toString(36).slice(2, 8)}`;

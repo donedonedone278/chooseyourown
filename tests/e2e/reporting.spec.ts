@@ -20,7 +20,7 @@ test('a signed-in reader can like a chapter and report it', async ({ page }) => 
 
   // Like → count goes 0 → 1 and the button reads "Liked".
   await expect(page.locator('main').getByLabel('0 likes')).toBeVisible();
-  await page.locator('main').getByRole('button', { name: 'Like' }).click();
+  await page.locator('main').getByRole('button', { name: 'Like', exact: true }).click();
   await expect(page.locator('main').getByLabel('1 like')).toBeVisible();
   await expect(page.locator('main').getByRole('button', { name: 'Liked' })).toBeDisabled();
 

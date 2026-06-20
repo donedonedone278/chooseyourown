@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { Stat } from '@/components/ui/stat';
 
@@ -58,5 +59,85 @@ describe('Stat', () => {
     const icon = screen.getByLabelText('2 views').querySelector('svg');
     expect(icon).toHaveAttribute('fill', 'none');
     expect(icon).toHaveAttribute('stroke', 'currentColor');
+  });
+
+  it('renders no button and no popup by default (safe to nest in a Link)', () => {
+    render(<Stat kind="views" value={2} />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByText('views')).not.toBeInTheDocument();
+  });
+
+  it('with explain, tapping the glyph reveals the noun label popup', async () => {
+    const user = userEvent.setup();
+    render(<Stat kind="views" value={2} explain />);
+
+    expect(screen.queryByText('views')).not.toBeInTheDocument();
+
+    const button = screen.getByRole('button', { name: '2 views' });
+    await user.click(button);
+
+    expect(screen.getByText('views')).toBeInTheDocument();
+  });
+
+  it('with explain, the popup is aria-hidden (redundant for assistive tech)', async () => {
+    const user = userEvent.setup();
+    render(<Stat kind="views" value={2} explain />);
+
+    const button = screen.getByRole('button', { name: '2 views' });
+    await user.click(button);
+
+    const popup = screen.getByText('views');
+    expect(popup).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('with explain, tapping again closes the popup', async () => {
+    const user = userEvent.setup();
+    render(<Stat kind="views" value={2} explain />);
+
+    const button = screen.getByRole('button', { name: '2 views' });
+    await user.click(button);
+    expect(screen.getByText('views')).toBeInTheDocument();
+
+    await user.click(button);
+    expect(screen.queryByText('views')).not.toBeInTheDocument();
+  });
+
+  it('with explain, Escape closes the popup', async () => {
+    const user = userEvent.setup();
+    render(<Stat kind="views" value={2} explain />);
+
+    const button = screen.getByRole('button', { name: '2 views' });
+    await user.click(button);
+    expect(screen.getByText('views')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByText('views')).not.toBeInTheDocument();
+  });
+
+  it('with explain, blurring the button closes the popup', async () => {
+    const user = userEvent.setup();
+    render(
+      <div>
+        <Stat kind="views" value={2} explain />
+        <button type="button">Elsewhere</button>
+      </div>
+    );
+
+    const button = screen.getByRole('button', { name: '2 views' });
+    await user.click(button);
+    expect(screen.getByText('views')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    expect(screen.queryByText('views')).not.toBeInTheDocument();
+  });
+
+  it('uses the singular noun in the popup when value is 1', async () => {
+    const user = userEvent.setup();
+    render(<Stat kind="likes" value={1} explain />);
+
+    const button = screen.getByRole('button', { name: '1 like' });
+    await user.click(button);
+
+    expect(screen.getByText('like')).toBeInTheDocument();
   });
 });

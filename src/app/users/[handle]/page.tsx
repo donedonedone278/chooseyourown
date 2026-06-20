@@ -43,10 +43,10 @@ export default async function UserProfilePage({
       <p className={styles.handle}>@{profile.username}</p>
 
       <div className={styles.stats}>
-        <Stat kind="chapters" value={profile.stats.chapters} />
-        <Stat kind="stories" value={profile.stats.stories} />
-        <Stat kind="likes" value={profile.stats.likesReceived} />
-        <Stat kind="views" value={views} />
+        <Stat kind="chapters" value={profile.stats.chapters} explain />
+        <Stat kind="stories" value={profile.stats.stories} explain />
+        <Stat kind="likes" value={profile.stats.likesReceived} explain />
+        <Stat kind="views" value={views} explain />
       </div>
 
       <nav className={styles.tabs} aria-label="Sort chapters">
@@ -79,8 +79,8 @@ export default async function UserProfilePage({
                 {chapter.title}
               </Link>
               <span className={styles.itemStats}>
-                <Stat kind="likes" value={chapter.likeCount} />
-                <Stat kind="views" value={chapter.viewCount} />
+                <Stat kind="likes" value={chapter.likeCount} explain />
+                <Stat kind="views" value={chapter.viewCount} explain />
               </span>
             </li>
           ))}

@@ -70,8 +70,14 @@ export function ChapterReader({
         </div>
 
         <section aria-label="Reactions" className={styles.reactions}>
-          <Stat kind="likes" value={likeCount} active={viewerHasLiked} className={styles.likeCount} />
-          <Stat kind="views" value={viewCount} className={styles.viewCount} />
+          <Stat
+            kind="likes"
+            value={likeCount}
+            active={viewerHasLiked}
+            explain
+            className={styles.likeCount}
+          />
+          <Stat kind="views" value={viewCount} explain className={styles.viewCount} />
           {isSignedIn ? (
             <form action={likeChapterAction.bind(null, chapterId, storyId)}>
               <button type="submit" className={`btn ${styles.likeButton}`} disabled={viewerHasLiked}>
