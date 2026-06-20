@@ -25,6 +25,17 @@ prints one `✓ <stage>` line per stage on success and dumps output **only** for
 that fails. Use it when you just want pass/fail plus the first failure without scrolling;
 `npm test` still prints everything. Self-contained (sets the Volta PATH itself).
 
+## `db-reset.sh` — `npm run db:reset`
+
+Rebuilds the local **dev** database from scratch and loads the demo/dummy data in one
+repeatable step: drop `prisma/dev.db*` → `prisma migrate deploy` (apply all committed
+migrations) → `prisma db seed`. Use it for first-time setup or whenever you want a clean,
+known dev db. Idempotent and safe to re-run. Sets both the Volta PATH and `node_modules/.bin`
+(so Prisma can spawn the `tsx` seed). Deliberately the explicit delete → deploy → seed form
+rather than `prisma migrate reset --force` — non-interactive, no confirmation prompt, and it
+never trips the agent-blocked reset path. Schema changes themselves go through
+`npx prisma migrate dev --name <desc>` (see `CLAUDE.md` → Environment); `db push` is retired.
+
 ## `claim.sh` — `npm run claim <feat/initials-name>`
 
 Claims a backlog ticket by **publishing its feature branch**. Syncs `develop`

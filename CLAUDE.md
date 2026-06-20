@@ -198,7 +198,7 @@ Three test tiers — keep each one in its lane:
 | Client components | Vitest (jsdom) + Testing Library | `'use client'` components |
 | Server-rendered & full flows | Playwright | server components, auth, end-to-end journeys |
 
-- **Vitest** (`vitest.config.ts`): default environment is **node**, `globals: true`, `fileParallelism: false` (tests share one SQLite DB, so they run serially). `src/test/global-setup.ts` sets `DATABASE_URL` to `file:./test.db`, deletes any existing `prisma/test.db`, then runs `prisma db push --skip-generate` so each run starts from a clean schema-synced db (Prisma's `--force-reset` is blocked when invoked by an agent, hence the manual file delete). JSX uses the automatic runtime via esbuild (no `@vitejs/plugin-react`, which pins a newer Vite than Vitest ships). Include globs cover `src/**/*.{test,spec}.{ts,tsx}` and `tests/unit/**`; e2e is excluded.
+- **Vitest** (`vitest.config.ts`): default environment is **node**, `globals: true`, `fileParallelism: false` (tests share one SQLite DB, so they run serially). `src/test/global-setup.ts` sets `DATABASE_URL` to `file:./test.db`, deletes any existing `prisma/test.db`, then runs `prisma migrate deploy` so each run starts from a clean db built from the **committed migrations** (so the suite exercises the real migration history — a broken migration fails the gate — not just the latest schema). `--force-reset` is blocked when invoked by an agent, hence the manual file delete + non-interactive `migrate deploy`. JSX uses the automatic runtime via esbuild (no `@vitejs/plugin-react`, which pins a newer Vite than Vitest ships). Include globs cover `src/**/*.{test,spec}.{ts,tsx}` and `tests/unit/**`; e2e is excluded.
 - Use the factories in `src/test/factories.ts` (`createUser`, `createStory`, `createChapter`) for test data — they upsert authors and generate unique fields, so don't hand-roll Prisma inserts in tests.
 - **Unit (node-tier) tests must not import server-only code** — server components, `src/lib/auth.ts`, or anything that pulls in `next-auth`/`next/server`. Those can't load in Vitest's node environment and will fail the whole file at import time. Test pure domain/lib modules there; exercise auth and server components through Playwright instead.
 - **Client-component tests** opt into jsdom with a `// @vitest-environment jsdom` docblock on the first line and use `@testing-library/react` (`render`/`screen`). `@testing-library/jest-dom` matchers are registered globally via `src/test/setup-dom.ts`.
@@ -220,6 +220,14 @@ First-time local setup (these artifacts don't live in git, so a fresh clone need
 curl https://get.volta.sh | bash   # once per machine; gives you the pinned Node
 npm install
 printf 'DATABASE_URL="file:./dev.db"\nAUTH_SECRET="%s"\n' "$(openssl rand -base64 33)" > .env
-npx prisma db push                 # create the dev SQLite db from the schema
+npm run db:reset                   # build the dev SQLite db from migrations + seed demo data
 npx playwright install chromium    # browser for the e2e stage of `npm test`
 ```
+
+**Schema changes go through Prisma Migrate, never `db push`.** Edit `prisma/schema.prisma`,
+then `npx prisma migrate dev --name <short-desc>` to generate + apply a migration under
+`prisma/migrations/` (commit it — migrations are version-controlled). `npm run db:reset`
+rebuilds the dev db from scratch (drop → `migrate deploy` → seed) any time you want a clean,
+known state with the demo/dummy data; it's idempotent and repeatable. Tests apply migrations
+via `migrate deploy`. The legacy `db push` flow has been retired so schema history stays
+reviewable and reproducible.

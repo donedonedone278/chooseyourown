@@ -134,3 +134,21 @@ but the push should never have fired.
   hardened the `editor.spec` selection race (wait for the toolbar `aria-pressed` to reflect
   the selection before toggling a mark) so the gate is deterministic. Flaky gate + loose
   shell chaining = bad pushes; fixed both.
+
+## After `db:reset` (or any dev.db delete), restart the dev server (2026-06-20)
+
+**Self-caught during the prisma-migrate adoption:** after `npm run db:reset` rebuilt
+`prisma/dev.db`, all 14 sign-up-based e2e specs failed at "Signed in as <name>". The migrate
+change was a red herring — unit tests (which use `test.db`) were green. The cause: a
+background `npm run dev:phone` started earlier in the session still held an **open SQLite
+handle to the now-deleted `dev.db` inode**. Playwright's `reuseExistingServer: true` reused
+that zombie server, whose auth/db writes went to the unlinked ghost file, so no user ever
+appeared signed in.
+- **Rule:** deleting/recreating the SQLite db file (`db:reset`, manual `rm dev.db`, a fresh
+  `migrate`) **invalidates any running dev server's connection** — restart the dev server
+  afterward. `db-reset.sh` now warns when a server is up on :3000.
+- **Debugging tell:** a broad e2e failure where *only* dev-server/e2e specs break while
+  unit/`test.db` specs pass points at the **dev.db / running-server**, not the code under
+  change. Check for a stale `next dev` before suspecting the diff.
+- Ties to the dev-loop: the orchestrator owns the `dev:phone` process — after a `db:reset`,
+  relaunch it so phone testing hits the fresh db too.
