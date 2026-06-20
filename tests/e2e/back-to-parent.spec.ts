@@ -11,6 +11,7 @@ test('the child chapter reader links back to its structural parent, root has no 
   // Sign up (writing is auth-gated).
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Robin');
+  await page.getByLabel('Handle').fill(`robin-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`robin-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();

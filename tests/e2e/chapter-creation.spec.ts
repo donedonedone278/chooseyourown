@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
 
 test('signed-in user starts a story and adds a child chapter', async ({ page }) => {
-  const email = `clocktower-${Date.now()}@example.com`;
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const email = `clocktower-${stamp}@example.com`;
 
   // Writing is auth-gated, so create an account first.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Quinn');
+  await page.getByLabel('Handle').fill(`quinn-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();

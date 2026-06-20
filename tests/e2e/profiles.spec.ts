@@ -1,0 +1,83 @@
+import { expect, test } from '@playwright/test';
+
+test('sign-up handle becomes a public profile with stats and the new chapter, byline links work', async ({
+  page
+}) => {
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const handle = `maya-${Math.random().toString(36).slice(2, 8)}`;
+  const storyTitle = `Profile Story ${stamp}`;
+  const rootTitle = `Profile Root ${stamp}`;
+
+  // Sign up with a handle.
+  await page.goto('/auth/sign-up');
+  await page.getByLabel('Display name').fill('Maya Profile');
+  await page.getByLabel('Handle').fill(handle);
+  await page.getByLabel('Email').fill(`maya-profile-${stamp}@example.com`);
+  await page.getByLabel('Password').fill('password123');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('Signed in as Maya Profile')).toBeVisible();
+
+  // Publish a chapter so the profile has content.
+  await page.goto('/stories/new');
+  await page.getByLabel('Story title').fill(storyTitle);
+  await page.getByLabel('Chapter title').fill(rootTitle);
+  await page.getByLabel('Chapter content').fill('The root chapter.');
+  await page.getByRole('button', { name: 'Publish first chapter' }).click();
+  await expect(page.getByRole('heading', { name: rootTitle })).toBeVisible();
+
+  // The story-cover byline links to the profile.
+  await page.locator('main').getByRole('link', { name: storyTitle }).click();
+  await expect(page.locator('main').getByRole('heading', { name: storyTitle })).toBeVisible();
+  await page.locator('main').getByRole('link', { name: 'Maya Profile' }).click();
+
+  // Profile page: display name, handle, stats, chapter in Newest.
+  await expect(page).toHaveURL(`/users/${handle}`);
+  await expect(page.locator('main').getByRole('heading', { name: 'Maya Profile' })).toBeVisible();
+  await expect(page.locator('main').getByText(`@${handle}`)).toBeVisible();
+  await expect(page.locator('main').getByRole('link', { name: rootTitle })).toBeVisible();
+
+  // Switch to Most liked — still shows the same (only) chapter.
+  await page.locator('main').getByRole('link', { name: 'Most liked' }).click();
+  await expect(page).toHaveURL(`/users/${handle}?sort=likes`);
+  await expect(page.locator('main').getByRole('link', { name: rootTitle })).toBeVisible();
+});
+
+test('signing up with an already-taken handle shows an error instead of crashing', async ({ page }) => {
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const handle = `dupe-${Math.random().toString(36).slice(2, 8)}`;
+
+  await page.goto('/auth/sign-up');
+  await page.getByLabel('Display name').fill('Dupe Handle One');
+  await page.getByLabel('Handle').fill(handle);
+  await page.getByLabel('Email').fill(`dupe-handle-one-${stamp}@example.com`);
+  await page.getByLabel('Password').fill('password123');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('Signed in as Dupe Handle One')).toBeVisible();
+
+  const fresh = await page.context().browser()!.newContext();
+  const freshPage = await fresh.newPage();
+  await freshPage.goto('/auth/sign-up');
+  await freshPage.getByLabel('Display name').fill('Dupe Handle Two');
+  await freshPage.getByLabel('Handle').fill(handle);
+  await freshPage.getByLabel('Email').fill(`dupe-handle-two-${stamp}@example.com`);
+  await freshPage.getByLabel('Password').fill('password123');
+  await freshPage.getByRole('button', { name: 'Create account' }).click();
+  await expect(
+    freshPage.locator('main').getByText('That handle is already taken.')
+  ).toBeVisible();
+  await fresh.close();
+});
+
+test('signing up with a reserved or invalid handle is rejected', async ({ page }) => {
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  await page.goto('/auth/sign-up');
+  await page.getByLabel('Display name').fill('Reserved Handle');
+  await page.getByLabel('Handle').fill('admin');
+  await page.getByLabel('Email').fill(`reserved-handle-${stamp}@example.com`);
+  await page.getByLabel('Password').fill('password123');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(
+    page.locator('main').getByText(/Handles are 3-30 characters/)
+  ).toBeVisible();
+});

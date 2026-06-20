@@ -9,6 +9,7 @@ test('a published chapter surfaces in the feed and choices show like counts', as
   // Sign up (writing is auth-gated).
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Sam');
+  await page.getByLabel('Handle').fill(`sam-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`sam-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();

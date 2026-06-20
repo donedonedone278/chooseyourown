@@ -9,6 +9,7 @@ test('crowd-mode tagging: two users can each add a tag to the same chapter', asy
   // First user signs up and starts a crowd-mode story (the default).
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Riley');
+  await page.getByLabel('Handle').fill(`riley-tag-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`riley-tag-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -42,6 +43,7 @@ test('crowd-mode tagging: two users can each add a tag to the same chapter', asy
   const secondPage = await secondContext.newPage();
   await secondPage.goto('/auth/sign-up');
   await secondPage.getByLabel('Display name').fill('Sam');
+  await secondPage.getByLabel('Handle').fill(`sam-tag-${Math.random().toString(36).slice(2, 8)}`);
   await secondPage.getByLabel('Email').fill(`sam-tag-${stamp}@example.com`);
   await secondPage.getByLabel('Password').fill('password123');
   await secondPage.getByRole('button', { name: 'Create account' }).click();
@@ -64,6 +66,7 @@ test('author-only tagging: a non-author cannot add tags', async ({ page, browser
 
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Morgan');
+  await page.getByLabel('Handle').fill(`morgan-tag-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`morgan-tag-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -83,6 +86,7 @@ test('author-only tagging: a non-author cannot add tags', async ({ page, browser
   const otherPage = await otherContext.newPage();
   await otherPage.goto('/auth/sign-up');
   await otherPage.getByLabel('Display name').fill('Casey');
+  await otherPage.getByLabel('Handle').fill(`casey-tag-${Math.random().toString(36).slice(2, 8)}`);
   await otherPage.getByLabel('Email').fill(`casey-tag-${stamp}@example.com`);
   await otherPage.getByLabel('Password').fill('password123');
   await otherPage.getByRole('button', { name: 'Create account' }).click();
