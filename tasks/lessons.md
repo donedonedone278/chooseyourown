@@ -152,3 +152,10 @@ appeared signed in.
   change. Check for a stale `next dev` before suspecting the diff.
 - Ties to the dev-loop: the orchestrator owns the `dev:phone` process — after a `db:reset`,
   relaunch it so phone testing hits the fresh db too.
+- **Stale browser sessions, same cause:** the app uses stateless JWT auth, so a reset also
+  leaves any already-signed-in browser holding a JWT for a now-deleted user row. The user
+  hit this — reading a chapter crashed with `prisma.chapterView.create()` "Foreign key
+  constraint violated" (the view's `userId` FK pointed at the deleted user). After a reset,
+  sign out/in for a clean session. **Hardened the code too:** `recordView` now treats `P2003`
+  (FK violation) as a quiet no-op like `P2002`, since a best-effort view counter must never
+  crash the reader — see `src/lib/views.ts` + its test.

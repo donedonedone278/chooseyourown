@@ -34,9 +34,14 @@ export async function recordView(input: {
       }
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      // Already viewed by this viewerKey — quiet no-op, not an error.
-      return { counted: false };
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // A view is best-effort and must never crash the reader:
+      //  - P2002: already viewed by this viewerKey (idempotent reload).
+      //  - P2003: the viewer's userId FK no longer exists — e.g. a stale JWT
+      //    session pointing at a user row deleted by a db reset. Skip the row.
+      if (error.code === 'P2002' || error.code === 'P2003') {
+        return { counted: false };
+      }
     }
     throw error;
   }
