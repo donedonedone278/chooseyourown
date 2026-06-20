@@ -78,15 +78,19 @@ for phone testing per the "Development loop" below — don't wait to be asked.
 npm install            # also runs `prisma generate` via postinstall
 npm run dev            # Next.js dev server on :3000 (localhost only)
 npm run dev:phone      # dev server reachable from a phone on the LAN; prints the URL
+npm run phone:url      # print JUST the phone URL (no server) — handy after backgrounding dev:phone
 npm run build
 npm run lint           # next lint (eslint-config-next, core-web-vitals)
 npm run typecheck      # tsc --noEmit
 npm run test:unit      # Vitest: domain/unit tests
 npm run test:e2e       # Playwright: browser journeys (chromium)
 npm test               # full local gate: lint → typecheck → unit → e2e (fail-fast)
+npm run check          # same gate, low-noise: one ✓ line per stage, output only for a failure
 ```
 
-`npm test` is the single pre-commit gate. Run it before committing; each stage is also runnable standalone (above).
+`npm test` is the single pre-commit gate. Run it before committing; each stage is also runnable standalone (above). `npm run check` is the quieter variant for the same gate.
+
+**Volta PATH in non-interactive shells:** rather than prefixing `export PATH="$HOME/.volta/bin:$PATH"` on every command, source `scripts/volta-env.sh` — wire it via `BASH_ENV` in the gitignored `.claude/settings.local.json` (local only, never shared). See `scripts/README.md`.
 
 Run a single unit test file / name:
 ```bash

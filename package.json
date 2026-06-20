@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:phone": "bash scripts/dev-phone.sh",
+    "phone:url": "bash scripts/phone-url.sh",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -12,6 +13,7 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test": "npm run lint && npm run typecheck && npm run test:unit && npm run test:e2e",
+    "check": "bash scripts/check.sh",
     "db:seed": "prisma db seed"
   },
   "prisma": {
