@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { db } from '@/lib/db';
 import { recordProfileView } from '@/lib/profile-views';
-import { getUserProfileByHandle } from '@/lib/users';
+import { getUserProfileById } from '@/lib/users';
 import { createChapter, createStory, createUser } from '@/test/factories';
 
-describe('getUserProfileByHandle', () => {
-  it('returns null for an unknown handle', async () => {
-    const profile = await getUserProfileByHandle('nobody-handle-does-not-exist');
+describe('getUserProfileById', () => {
+  it('returns null for an unknown id', async () => {
+    const profile = await getUserProfileById('nobody-id-does-not-exist');
     expect(profile).toBeNull();
   });
 
@@ -50,7 +50,7 @@ describe('getUserProfileByHandle', () => {
       userId: thirdUser.id
     });
 
-    const profile = await getUserProfileByHandle(author.username);
+    const profile = await getUserProfileById(author.id);
 
     expect(profile).not.toBeNull();
     expect(profile!.displayName).toBe('Maya Quill');
@@ -82,7 +82,7 @@ describe('getUserProfileByHandle', () => {
 
     await db.chapter.update({ where: { id: deletedChapter.id }, data: { deletedAt: new Date() } });
 
-    const profile = await getUserProfileByHandle(author.username);
+    const profile = await getUserProfileById(author.id);
 
     expect(profile!.stats.chapters).toBe(1);
     expect(profile!.chaptersNewest.map((c) => c.id)).toEqual([liveChapter.id]);

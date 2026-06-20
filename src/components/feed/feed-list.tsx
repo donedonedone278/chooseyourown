@@ -10,7 +10,7 @@ export type FeedItem = {
   title: string;
   storyId: string;
   story: { title: string };
-  author: { displayName: string; username: string };
+  author: { id: string; displayName: string };
   read: boolean;
 };
 
@@ -42,7 +42,7 @@ export function FeedList({ chapters, userId }: { chapters: FeedItem[]; userId?: 
               from <Link href={`/stories/${chapter.storyId}`}>{chapter.story.title}</Link>
             </span>
             <span className={styles.byline}>
-              by <Link href={`/users/${chapter.author.username}`}>{chapter.author.displayName}</Link>
+              by <Link href={`/users/${chapter.author.id}`}>{chapter.author.displayName}</Link>
             </span>
           </li>
         );

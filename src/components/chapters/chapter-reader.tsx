@@ -34,7 +34,7 @@ export function ChapterReader({
   title: string;
   content: string;
   storyTitle: string;
-  author: { displayName: string; username: string };
+  author: { id: string; displayName: string };
   choices: Choice[];
   likeCount: number;
   viewCount: number;
@@ -63,7 +63,7 @@ export function ChapterReader({
         ) : null}
         <h1>{title}</h1>
         <p className={styles.byline}>
-          by <Link href={`/users/${author.username}`}>{author.displayName}</Link>
+          by <Link href={`/users/${author.id}`}>{author.displayName}</Link>
         </p>
         <div className={styles.body}>
           <MarkdownContent markdown={content} />

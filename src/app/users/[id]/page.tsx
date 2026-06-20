@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { recordProfileViewAction } from '@/actions/view-actions';
 import { Stat } from '@/components/ui/stat';
-import { getUserProfileByHandle } from '@/lib/users';
+import { getUserProfileById } from '@/lib/users';
 import styles from './profile.module.css';
 
 const SORTS = ['new', 'likes'] as const;
@@ -17,14 +17,14 @@ export default async function UserProfilePage({
   params,
   searchParams
 }: {
-  params: Promise<{ handle: string }>;
+  params: Promise<{ id: string }>;
   searchParams: Promise<{ sort?: string }>;
 }) {
-  const { handle } = await params;
+  const { id } = await params;
   const { sort: rawSort } = await searchParams;
   const sort: Sort = isSort(rawSort) ? rawSort : 'new';
 
-  const profile = await getUserProfileByHandle(handle);
+  const profile = await getUserProfileById(id);
   if (!profile) {
     notFound();
   }
@@ -51,14 +51,14 @@ export default async function UserProfilePage({
 
       <nav className={styles.tabs} aria-label="Sort chapters">
         <Link
-          href={`/users/${profile.username}?sort=new`}
+          href={`/users/${profile.id}?sort=new`}
           className={sort === 'new' ? styles.tabActive : styles.tab}
           aria-current={sort === 'new' ? 'page' : undefined}
         >
           Newest
         </Link>
         <Link
-          href={`/users/${profile.username}?sort=likes`}
+          href={`/users/${profile.id}?sort=likes`}
           className={sort === 'likes' ? styles.tabActive : styles.tab}
           aria-current={sort === 'likes' ? 'page' : undefined}
         >

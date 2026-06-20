@@ -23,13 +23,15 @@ export type UserProfile = {
 };
 
 /**
- * Public profile data for `/users/[handle]`: display name + handle, derived
+ * Public profile data for `/users/[id]`: display name + handle, derived
  * stats, and the chapter list in both sort orders (Newest / Most liked).
- * Soft-deleted chapters are excluded everywhere. Returns `null` for an
- * unknown handle so the page can `notFound()`.
+ * Routed by the stable `User.id` cuid (not the @handle) so a user can change
+ * their handle later without breaking existing links — `username` is still
+ * returned for the @ display. Soft-deleted chapters are excluded everywhere.
+ * Returns `null` for an unknown id so the page can `notFound()`.
  */
-export async function getUserProfileByHandle(handle: string): Promise<UserProfile | null> {
-  const user = await db.user.findUnique({ where: { username: handle } });
+export async function getUserProfileById(id: string): Promise<UserProfile | null> {
+  const user = await db.user.findUnique({ where: { id } });
   if (!user) return null;
 
   const [storyCount, chaptersNewestRaw, chaptersMostLikedRaw] = await Promise.all([
