@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { createChildChapter, createStoryWithRootChapter } from '@/lib/chapters';
+import { slugifyHandle } from '@/lib/handles';
 import { hashPassword } from '@/lib/passwords';
 
 const OFFICIAL_TAGS: { name: string; icon: string }[] = [
@@ -206,6 +207,7 @@ async function main() {
     update: {},
     create: {
       email: 'admin@example.com',
+      username: slugifyHandle('Admin'),
       displayName: 'Admin',
       passwordHash,
       isAdmin: true
@@ -225,7 +227,12 @@ async function main() {
     const user = await db.user.upsert({
       where: { email: author.email },
       update: { displayName: author.displayName },
-      create: { email: author.email, displayName: author.displayName, passwordHash }
+      create: {
+        email: author.email,
+        username: slugifyHandle(author.displayName),
+        displayName: author.displayName,
+        passwordHash
+      }
     });
     authorIds.set(author.email, user.id);
   }

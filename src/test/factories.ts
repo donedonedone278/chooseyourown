@@ -8,6 +8,7 @@ function uniqueSuffix() {
 
 export async function createUser(overrides: {
   email?: string;
+  username?: string;
   displayName?: string;
   passwordHash?: string;
   isAdmin?: boolean;
@@ -17,6 +18,7 @@ export async function createUser(overrides: {
   return db.user.create({
     data: {
       email: overrides.email ?? `user-${suffix}@example.com`,
+      username: overrides.username ?? `user-${suffix}`,
       displayName: overrides.displayName ?? `User ${suffix}`,
       passwordHash: overrides.passwordHash ?? 'hashed-password',
       isAdmin: overrides.isAdmin ?? false
@@ -42,6 +44,7 @@ export async function createStory(overrides: {
     create: {
       id: overrides.authorId,
       email: `${overrides.authorId}@example.com`,
+      username: `${overrides.authorId}-${uniqueSuffix()}`,
       displayName: overrides.authorId,
       passwordHash: 'hashed-password'
     }
@@ -70,6 +73,7 @@ export async function createChapter(overrides: {
     create: {
       id: overrides.authorId,
       email: `${overrides.authorId}@example.com`,
+      username: `${overrides.authorId}-${uniqueSuffix()}`,
       displayName: overrides.authorId,
       passwordHash: 'hashed-password'
     }
