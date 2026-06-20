@@ -1,9 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { STAT_KINDS, type StatKind } from '@/components/ui/icons';
 import styles from './stat.module.css';
+
+// Custom event used so every open Stat popup can hear about a newly-opened
+// one and close itself — keeps "only one open at a time" without an app-wide
+// context/provider, which wouldn't reach across independently-rendered Stats
+// in server components anyway.
+const STAT_POPUP_OPEN_EVENT = 'stat-popup:open';
+
+type StatPopupOpenDetail = { id: string };
+
+const POPUP_GAP = 8;
 
 /**
  * Presentational "icon + number" stat, e.g. a like count. Without `explain`
@@ -29,6 +40,9 @@ export function Stat({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<{ top: number; left: number; flip: boolean } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const instanceId = useId();
   const { icon: Icon, noun, plural, accent } = STAT_KINDS[kind];
   const label = `${value} ${value === 1 ? noun : plural ?? `${noun}s`}`;
   const picked = active ? accent : undefined;
@@ -42,6 +56,52 @@ export function Stat({
     />
   );
 
+  const close = () => setOpen(false);
+
+  const reposition = () => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const flip = rect.top < 60; // not enough room above — flip below instead.
+    setPosition({
+      top: flip ? rect.bottom + POPUP_GAP : rect.top - POPUP_GAP,
+      left: rect.left + rect.width / 2,
+      flip
+    });
+  };
+
+  // Only one popup open at a time: announce this open to every other Stat,
+  // and close this one if a different instance announces an open.
+  useEffect(() => {
+    if (!open) return;
+
+    const onOtherOpen = (event: Event) => {
+      const detail = (event as CustomEvent<StatPopupOpenDetail>).detail;
+      if (detail?.id !== instanceId) setOpen(false);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+        close();
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+
+    window.addEventListener(STAT_POPUP_OPEN_EVENT, onOtherOpen);
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+
+    return () => {
+      window.removeEventListener(STAT_POPUP_OPEN_EVENT, onOtherOpen);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open, instanceId]);
+
   if (!explain) {
     return (
       <span title={label} aria-label={label} className={[styles.stat, className].filter(Boolean).join(' ')}>
@@ -54,24 +114,46 @@ export function Stat({
   return (
     <span className={[styles.statWrap, className].filter(Boolean).join(' ')}>
       <button
+        ref={buttonRef}
         type="button"
         title={label}
         aria-label={label}
         className={styles.stat}
-        onClick={() => setOpen((wasOpen) => !wasOpen)}
-        onBlur={() => setOpen(false)}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') setOpen(false);
+        onClick={() => {
+          setOpen((wasOpen) => {
+            const next = !wasOpen;
+            if (next) {
+              reposition();
+              window.dispatchEvent(
+                new CustomEvent<StatPopupOpenDetail>(STAT_POPUP_OPEN_EVENT, { detail: { id: instanceId } })
+              );
+            }
+            return next;
+          });
         }}
       >
         {iconEl}
         {value}
       </button>
-      {open ? (
-        <span className={styles.popup} aria-hidden="true">
-          {value === 1 ? noun : plural ?? `${noun}s`}
-        </span>
-      ) : null}
+      {open && position && typeof document !== 'undefined'
+        ? createPortal(
+            <span
+              data-stat-popup
+              role="presentation"
+              aria-hidden="true"
+              className={styles.popup}
+              style={{
+                position: 'fixed',
+                top: position.top,
+                left: position.left,
+                transform: position.flip ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'
+              }}
+            >
+              {value === 1 ? noun : plural ?? `${noun}s`}
+            </span>,
+            document.body
+          )
+        : null}
     </span>
   );
 }

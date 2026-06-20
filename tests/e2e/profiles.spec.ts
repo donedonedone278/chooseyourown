@@ -75,7 +75,7 @@ test('viewing a profile as a different signed-up user increments its profile-vie
   await page.locator('main').getByRole('link', { name: 'Riley Owner' }).click();
   await expect(page).toHaveURL(/\/users\/[a-z0-9]+$/);
   const profileUrl = page.url();
-  await expect(page.locator('main').getByLabel('0 views')).toBeVisible();
+  await expect(page.getByTestId('profile-stats').getByLabel('0 views')).toBeVisible();
 
   // A different signed-up user visits the profile.
   const fresh = await page.context().browser()!.newContext();

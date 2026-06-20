@@ -19,11 +19,11 @@
 }
 
 .popup {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 0.25rem;
+  /* `position: fixed` and `top`/`left`/`transform` are set inline per-instance
+     from the button's getBoundingClientRect() — see stat.tsx. This is a true
+     floating layer (portaled to document.body): it reserves no layout space
+     in the page and never participates in an ancestor's stacking context. */
+  z-index: 1000;
   padding: 0.125rem 0.5rem;
   border-radius: 0.25rem;
   background: #111;

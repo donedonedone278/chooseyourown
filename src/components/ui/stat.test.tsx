@@ -67,77 +67,109 @@ describe('Stat', () => {
     expect(screen.queryByText('views')).not.toBeInTheDocument();
   });
 
-  it('with explain, tapping the glyph reveals the noun label popup', async () => {
-    const user = userEvent.setup();
-    render(<Stat kind="views" value={2} explain />);
+  describe('with explain (floating popup)', () => {
+    it('renders no popup node anywhere — not in the wrapper, not in document.body — while closed', () => {
+      render(<Stat kind="views" value={2} explain />);
+      expect(screen.queryByText('views')).not.toBeInTheDocument();
+      expect(document.body.querySelector('[data-stat-popup]')).toBeNull();
+    });
 
-    expect(screen.queryByText('views')).not.toBeInTheDocument();
+    it('tapping the glyph reveals a popup portaled to document.body', async () => {
+      const user = userEvent.setup();
+      const { container } = render(<Stat kind="views" value={2} explain />);
 
-    const button = screen.getByRole('button', { name: '2 views' });
-    await user.click(button);
+      const button = screen.getByRole('button', { name: '2 views' });
+      await user.click(button);
 
-    expect(screen.getByText('views')).toBeInTheDocument();
-  });
+      const popup = document.body.querySelector('[data-stat-popup]');
+      expect(popup).not.toBeNull();
+      expect(popup).toHaveTextContent('views');
+      // Portaled out of the local render tree, not a descendant of the wrapper.
+      expect(container.querySelector('[data-stat-popup]')).toBeNull();
+    });
 
-  it('with explain, the popup is aria-hidden (redundant for assistive tech)', async () => {
-    const user = userEvent.setup();
-    render(<Stat kind="views" value={2} explain />);
+    it('the popup is aria-hidden (redundant for assistive tech)', async () => {
+      const user = userEvent.setup();
+      render(<Stat kind="views" value={2} explain />);
 
-    const button = screen.getByRole('button', { name: '2 views' });
-    await user.click(button);
+      const button = screen.getByRole('button', { name: '2 views' });
+      await user.click(button);
 
-    const popup = screen.getByText('views');
-    expect(popup).toHaveAttribute('aria-hidden', 'true');
-  });
+      const popup = document.body.querySelector('[data-stat-popup]');
+      expect(popup).toHaveAttribute('aria-hidden', 'true');
+    });
 
-  it('with explain, tapping again closes the popup', async () => {
-    const user = userEvent.setup();
-    render(<Stat kind="views" value={2} explain />);
+    it('tapping again closes the popup', async () => {
+      const user = userEvent.setup();
+      render(<Stat kind="views" value={2} explain />);
 
-    const button = screen.getByRole('button', { name: '2 views' });
-    await user.click(button);
-    expect(screen.getByText('views')).toBeInTheDocument();
+      const button = screen.getByRole('button', { name: '2 views' });
+      await user.click(button);
+      expect(document.body.querySelector('[data-stat-popup]')).not.toBeNull();
 
-    await user.click(button);
-    expect(screen.queryByText('views')).not.toBeInTheDocument();
-  });
+      await user.click(button);
+      expect(document.body.querySelector('[data-stat-popup]')).toBeNull();
+    });
 
-  it('with explain, Escape closes the popup', async () => {
-    const user = userEvent.setup();
-    render(<Stat kind="views" value={2} explain />);
+    it('Escape closes the popup', async () => {
+      const user = userEvent.setup();
+      render(<Stat kind="views" value={2} explain />);
 
-    const button = screen.getByRole('button', { name: '2 views' });
-    await user.click(button);
-    expect(screen.getByText('views')).toBeInTheDocument();
+      const button = screen.getByRole('button', { name: '2 views' });
+      await user.click(button);
+      expect(document.body.querySelector('[data-stat-popup]')).not.toBeNull();
 
-    await user.keyboard('{Escape}');
-    expect(screen.queryByText('views')).not.toBeInTheDocument();
-  });
+      await user.keyboard('{Escape}');
+      expect(document.body.querySelector('[data-stat-popup]')).toBeNull();
+    });
 
-  it('with explain, blurring the button closes the popup', async () => {
-    const user = userEvent.setup();
-    render(
-      <div>
-        <Stat kind="views" value={2} explain />
-        <button type="button">Elsewhere</button>
-      </div>
-    );
+    it('an outside pointerdown closes the popup', async () => {
+      const user = userEvent.setup();
+      render(
+        <div>
+          <Stat kind="views" value={2} explain />
+          <button type="button">Elsewhere</button>
+        </div>
+      );
 
-    const button = screen.getByRole('button', { name: '2 views' });
-    await user.click(button);
-    expect(screen.getByText('views')).toBeInTheDocument();
+      const button = screen.getByRole('button', { name: '2 views' });
+      await user.click(button);
+      expect(document.body.querySelector('[data-stat-popup]')).not.toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
-    expect(screen.queryByText('views')).not.toBeInTheDocument();
-  });
+      await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+      expect(document.body.querySelector('[data-stat-popup]')).toBeNull();
+    });
 
-  it('uses the singular noun in the popup when value is 1', async () => {
-    const user = userEvent.setup();
-    render(<Stat kind="likes" value={1} explain />);
+    it('opening a second Stat closes the first (only one open at a time)', async () => {
+      const user = userEvent.setup();
+      render(
+        <div>
+          <Stat kind="views" value={2} explain />
+          <Stat kind="likes" value={5} explain />
+        </div>
+      );
 
-    const button = screen.getByRole('button', { name: '1 like' });
-    await user.click(button);
+      const viewsButton = screen.getByRole('button', { name: '2 views' });
+      const likesButton = screen.getByRole('button', { name: '5 likes' });
 
-    expect(screen.getByText('like')).toBeInTheDocument();
+      await user.click(viewsButton);
+      expect(document.body.querySelector('[data-stat-popup]')).toHaveTextContent('views');
+
+      await user.click(likesButton);
+      const popups = document.body.querySelectorAll('[data-stat-popup]');
+      expect(popups).toHaveLength(1);
+      expect(popups[0]).toHaveTextContent('likes');
+    });
+
+    it('uses the singular noun in the popup when value is 1', async () => {
+      const user = userEvent.setup();
+      render(<Stat kind="likes" value={1} explain />);
+
+      const button = screen.getByRole('button', { name: '1 like' });
+      await user.click(button);
+
+      const popup = document.body.querySelector('[data-stat-popup]');
+      expect(popup).toHaveTextContent('like');
+    });
   });
 });

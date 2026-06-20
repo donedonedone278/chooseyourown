@@ -42,7 +42,7 @@ export default async function UserProfilePage({
       <h1>{profile.displayName}</h1>
       <p className={styles.handle}>@{profile.username}</p>
 
-      <div className={styles.stats}>
+      <div className={styles.stats} data-testid="profile-stats">
         <Stat kind="chapters" value={profile.stats.chapters} explain />
         <Stat kind="stories" value={profile.stats.stories} explain />
         <Stat kind="likes" value={profile.stats.likesReceived} explain />
