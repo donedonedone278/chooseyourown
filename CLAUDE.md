@@ -152,7 +152,25 @@ LAN access. Don't put multi-step `&&` command chains in docs — add a script un
 
 ## UI principles
 
-**Visuals over words.** Prefer an intuitive visual signal — dimming, color, weight, iconography, position — over literal status text. A *read* chapter, for example, is shown by **dimming its card** (visited-link metaphor), not by printing the word "Read". This keeps the UI calm and scannable. Always pair the visual with a non-visual equivalent for accessibility (a `.sr-only` label, `aria-*`, or `title`) so screen-reader users aren't left out, and prefer a `data-*` hook over visible text when an e2e test needs to assert the state.
+**Visuals over words; symbols over labels; show, don't narrate.** Keep the UI calm and
+scannable — lean on intuitive signals (icon, glyph, dimming, color, weight, position) and
+let controls explain themselves, instead of spelling things out in prose.
+
+- **Status → a visual signal, not a word.** A *read* chapter is shown by **dimming its
+  card** (visited-link metaphor), not by printing "Read".
+- **Actions → a symbol plus the fewest words that stay clear.** Prefer a glyph, adding a
+  short label only when the glyph alone is ambiguous, over a sentence. A back control is
+  `←` (or `← Back`), not "Back to the previous chapter"; likes are a ♥ with a count, not
+  the word "likes".
+- **Don't narrate affordances the UI already makes obvious.** A visible Bold/Italic toolbar
+  doesn't need "Select text and use Bold/Italic…" beneath it — the buttons say it. Cut
+  helper text that restates what the controls already show.
+
+**Going terse never drops accessibility.** Every visual- or symbol-only signal still needs a
+non-visual equivalent — an `aria-label`/`title`/`.sr-only` that carries the meaning the glyph
+implies ("Back to parent chapter", "12 likes"). Terseness is about *pixels*, never the
+accessible name. Prefer a `data-*` hook over visible text when an e2e test needs to assert
+state.
 
 ## Testing conventions
 

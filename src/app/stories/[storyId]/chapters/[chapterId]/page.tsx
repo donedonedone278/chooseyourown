@@ -41,6 +41,7 @@ export default async function ChapterPage({
     <ChapterReader
       storyId={storyId}
       chapterId={chapter.id}
+      parentChapterId={chapter.parentChapterId}
       title={chapter.title}
       content={chapter.content}
       storyTitle={chapter.story.title}
