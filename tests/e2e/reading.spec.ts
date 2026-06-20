@@ -34,8 +34,9 @@ test('a published chapter surfaces in the feed and choices show like counts', as
   // Back on the root reader: the choice shows with its (zero) like count.
   await page.goto(rootUrl);
   await expect(page.getByRole('heading', { name: rootTitle })).toBeVisible();
-  await expect(page.locator('main').getByRole('link', { name: childTitle })).toBeVisible();
-  await expect(page.locator('main').getByText('0 likes')).toBeVisible();
+  const choices = page.getByRole('region', { name: 'Choices' });
+  await expect(choices.getByRole('link', { name: childTitle })).toBeVisible();
+  await expect(choices.getByLabel('0 likes')).toBeVisible();
 
   // The homepage feed surfaces the freshly published chapter.
   await page.goto('/');

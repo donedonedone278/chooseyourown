@@ -4,6 +4,7 @@ import { likeChapterAction } from '@/actions/chapter-actions';
 import { ChapterTags, type ChapterTagView } from '@/components/chapters/chapter-tags';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
 import { ReportChapter } from '@/components/chapters/report-chapter';
+import { Stat } from '@/components/ui/stat';
 import styles from './chapter-reader.module.css';
 
 type Choice = { id: string; title: string; likeCount: number };
@@ -47,9 +48,7 @@ export function ChapterReader({
         </div>
 
         <section aria-label="Reactions" className={styles.reactions}>
-          <p className={styles.likeCount}>
-            Liked by {likeCount} {likeCount === 1 ? 'reader' : 'readers'}
-          </p>
+          <Stat kind="likes" value={likeCount} active={viewerHasLiked} className={styles.likeCount} />
           {isSignedIn ? (
             <form action={likeChapterAction.bind(null, chapterId, storyId)}>
               <button type="submit" className={`btn ${styles.likeButton}`} disabled={viewerHasLiked}>
@@ -72,9 +71,7 @@ export function ChapterReader({
                   <Link href={`/stories/${storyId}/chapters/${choice.id}`} className={styles.choiceTitle}>
                     {choice.title}
                   </Link>
-                  <span className={styles.choiceLikes}>
-                    {choice.likeCount} {choice.likeCount === 1 ? 'like' : 'likes'}
-                  </span>
+                  <Stat kind="likes" value={choice.likeCount} className={styles.choiceLikes} />
                 </li>
               ))}
             </ul>
