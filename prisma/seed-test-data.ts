@@ -15,7 +15,7 @@
  * it does NOT drop or migrate — run `npm run db:reset` first if you want a clean base.
  */
 import { db } from '@/lib/db';
-import { createChildChapter, createStoryWithRootChapter } from '@/lib/chapters';
+import { addSuggestedPrompt, createChildChapter, createStoryWithRootChapter } from '@/lib/chapters';
 import { slugifyHandle } from '@/lib/handles';
 import { hashPassword } from '@/lib/passwords';
 
@@ -326,7 +326,7 @@ async function addChildren(
       storyId,
       parentChapterId,
       authorId,
-      title: node.title,
+      label: node.title,
       content: node.content
     });
     await enrichChapter(child.id, node, authorId, likerIds);
@@ -349,6 +349,20 @@ async function seedStory(story: Story, authorId: string, likerIds: string[]) {
   });
   await enrichChapter(created.rootChapterId, story.root, authorId, likerIds);
   await addChildren(created.id, created.rootChapterId, story.root.children, authorId, likerIds);
+
+  // A couple of unclaimed suggested prompts on the root, so the "write this"
+  // slot has real data to exercise in the dev/preview db.
+  await addSuggestedPrompt({
+    parentChapterId: created.rootChapterId,
+    authorId,
+    label: 'Try a different path'
+  });
+  await addSuggestedPrompt({
+    parentChapterId: created.rootChapterId,
+    authorId,
+    label: 'Turn back'
+  });
+
   console.log(`✓ seeded: ${story.title}`);
 }
 

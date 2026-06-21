@@ -26,6 +26,7 @@ test('a published chapter surfaces in the feed and choices show like counts', as
   const rootUrl = page.url();
 
   await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.getByLabel('Choice label').fill(childTitle);
   await page.getByLabel('Chapter title').fill(childTitle);
   await page.getByLabel('Chapter content').fill('A branch.');
   await page.getByRole('button', { name: 'Publish chapter' }).click();
@@ -36,6 +37,7 @@ test('a published chapter surfaces in the feed and choices show like counts', as
 
   // Add a grandchild under the child, so the root's choice has a real descendant.
   await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.getByLabel('Choice label').fill(grandchildTitle);
   await page.getByLabel('Chapter title').fill(grandchildTitle);
   await page.getByLabel('Chapter content').fill('A deeper branch.');
   await page.getByRole('button', { name: 'Publish chapter' }).click();

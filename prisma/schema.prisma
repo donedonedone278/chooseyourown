@@ -23,6 +23,7 @@ model User {
   views            ChapterView[]
   profileViews     ProfileView[] @relation("ProfileViews")
   profileViewsMade ProfileView[] @relation("ProfileViewsMade")
+  optionsCreated   ChapterOption[]
 }
 
 model Story {
@@ -55,6 +56,21 @@ model Chapter {
   reports         ChapterReport[]
   tags            ChapterTag[]
   views           ChapterView[]
+  optionsFromHere ChapterOption[] @relation("ChapterOptionsFromParent")
+  incomingOption  ChapterOption?  @relation("ChapterOptionToChild")
+}
+
+model ChapterOption {
+  id              String   @id @default(cuid())
+  parentChapterId String
+  childChapterId  String?  @unique
+  label           String
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  parentChapter Chapter  @relation("ChapterOptionsFromParent", fields: [parentChapterId], references: [id])
+  childChapter  Chapter? @relation("ChapterOptionToChild", fields: [childChapterId], references: [id])
+  createdBy     User     @relation(fields: [createdByUserId], references: [id])
 }
 
 model ChapterLike {

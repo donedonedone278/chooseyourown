@@ -66,6 +66,7 @@ export async function createChapter(overrides: {
   title?: string;
   content?: string;
   parentChapterId?: string | null;
+  label?: string;
 }) {
   await db.user.upsert({
     where: { id: overrides.authorId },
@@ -79,13 +80,47 @@ export async function createChapter(overrides: {
     }
   });
 
-  return db.chapter.create({
+  const title = overrides.title ?? `Chapter ${uniqueSuffix()}`;
+
+  const chapter = await db.chapter.create({
     data: {
       storyId: overrides.storyId,
       authorId: overrides.authorId,
-      title: overrides.title ?? `Chapter ${uniqueSuffix()}`,
+      title,
       content: overrides.content ?? 'Test content.',
       parentChapterId: overrides.parentChapterId ?? null
+    }
+  });
+
+  // Keep the "every non-root chapter has exactly one realized incoming
+  // option" invariant true for factory-built trees too, so existing tests
+  // that build a tree via createChapter still render choices in the reader.
+  if (overrides.parentChapterId) {
+    await db.chapterOption.create({
+      data: {
+        parentChapterId: overrides.parentChapterId,
+        childChapterId: chapter.id,
+        label: overrides.label ?? title,
+        createdByUserId: overrides.authorId
+      }
+    });
+  }
+
+  return chapter;
+}
+
+export async function createChapterOption(overrides: {
+  parentChapterId: string;
+  childChapterId?: string | null;
+  label?: string;
+  createdByUserId: string;
+}) {
+  return db.chapterOption.create({
+    data: {
+      parentChapterId: overrides.parentChapterId,
+      childChapterId: overrides.childChapterId ?? null,
+      label: overrides.label ?? `Choice ${uniqueSuffix()}`,
+      createdByUserId: overrides.createdByUserId
     }
   });
 }

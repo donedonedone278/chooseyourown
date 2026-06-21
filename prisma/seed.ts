@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { createChildChapter, createStoryWithRootChapter } from '@/lib/chapters';
+import { addSuggestedPrompt, createChildChapter, createStoryWithRootChapter } from '@/lib/chapters';
 import { slugifyHandle } from '@/lib/handles';
 import { hashPassword } from '@/lib/passwords';
 
@@ -189,7 +189,7 @@ async function seedDemoStory(authorId: string, story: DemoStory) {
         storyId: created.id,
         parentChapterId,
         authorId,
-        title: node.title,
+        label: node.title,
         content: node.content
       });
       await addChildren(child.id, node.children);
@@ -197,6 +197,19 @@ async function seedDemoStory(authorId: string, story: DemoStory) {
   }
 
   await addChildren(created.rootChapterId, story.root.children);
+
+  // A couple of unclaimed suggested prompts on the root chapter, so the
+  // "write this" slot is visible in the demo db without extra setup.
+  await addSuggestedPrompt({
+    parentChapterId: created.rootChapterId,
+    authorId,
+    label: 'Search for another way in'
+  });
+  await addSuggestedPrompt({
+    parentChapterId: created.rootChapterId,
+    authorId,
+    label: 'Wait until morning'
+  });
 }
 
 async function main() {

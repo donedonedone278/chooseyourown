@@ -11,15 +11,23 @@ const MAX_VISIBLE_TAGS = 4;
 
 export type ChoiceTag = { tagId: string; name: string; isOfficial: boolean; icon: string | null };
 
-export type ChoiceItem = {
-  id: string;
-  title: string;
-  likeCount: number;
-  viewCount: number;
-  descendantCount: number;
-  read: boolean;
-  tags: ChoiceTag[];
-};
+export type ChoiceItem =
+  | {
+      kind: 'realized';
+      optionId: string;
+      childId: string;
+      label: string;
+      likeCount: number;
+      viewCount: number;
+      descendantCount: number;
+      read: boolean;
+      tags: ChoiceTag[];
+    }
+  | {
+      kind: 'prompt';
+      optionId: string;
+      label: string;
+    };
 
 /**
  * Renders the chapter's choice list with read flags. A choice is read if the
@@ -30,10 +38,13 @@ export type ChoiceItem = {
  */
 export function ChoiceList({
   storyId,
+  chapterId,
   choices,
   userId
 }: {
   storyId: string;
+  /** The chapter these choices belong to — unclaimed prompts link to its `/new` route. */
+  chapterId: string;
   choices: ChoiceItem[];
   userId?: string | null;
 }) {
@@ -42,18 +53,35 @@ export function ChoiceList({
   return (
     <ul className={styles.choiceList}>
       {choices.map((choice) => {
-        const read = choice.read || isReadLocally(choice.id);
+        if (choice.kind === 'prompt') {
+          return (
+            <li key={choice.optionId} className={`${styles.choiceCard} ${styles.prompt}`} data-kind="prompt">
+              <div className={styles.choiceBody}>
+                <Link
+                  href={`/stories/${storyId}/chapters/${chapterId}/new?option=${choice.optionId}`}
+                  className={styles.choiceTitle}
+                  aria-label={`Unwritten — write this chapter: ${choice.label}`}
+                >
+                  <span aria-hidden="true">✎ </span>
+                  {choice.label}
+                </Link>
+              </div>
+            </li>
+          );
+        }
+
+        const read = choice.read || isReadLocally(choice.childId);
         const visibleTags = choice.tags.slice(0, MAX_VISIBLE_TAGS);
         const overflowCount = choice.tags.length - visibleTags.length;
         return (
           <li
-            key={choice.id}
+            key={choice.optionId}
             className={read ? `${styles.choiceCard} ${styles.read}` : styles.choiceCard}
             data-read={read ? 'true' : undefined}
           >
             <div className={styles.choiceBody}>
-              <Link href={`/stories/${storyId}/chapters/${choice.id}`} className={styles.choiceTitle}>
-                {choice.title}
+              <Link href={`/stories/${storyId}/chapters/${choice.childId}`} className={styles.choiceTitle}>
+                {choice.label}
               </Link>
               {choice.tags.length > 0 ? (
                 <ul className={styles.choiceTags}>

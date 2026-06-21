@@ -1,6 +1,10 @@
 import Link from 'next/link';
 
-import { likeChapterAction } from '@/actions/chapter-actions';
+import {
+  addSuggestedPromptAction,
+  deleteSuggestedPromptAction,
+  likeChapterAction
+} from '@/actions/chapter-actions';
 import { ChapterTags, type ChapterTagView } from '@/components/chapters/chapter-tags';
 import { ChoiceList, type ChoiceItem } from '@/components/chapters/choice-list';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
@@ -26,7 +30,8 @@ export function ChapterReader({
   userId,
   tags,
   canAddTags,
-  canRemoveTags
+  canRemoveTags,
+  isAuthor
 }: {
   storyId: string;
   chapterId: string;
@@ -43,6 +48,8 @@ export function ChapterReader({
   tags: ChapterTagView[];
   canAddTags: boolean;
   canRemoveTags: boolean;
+  /** Viewer is this chapter's author — gates the add/delete suggested-prompt UI. */
+  isAuthor: boolean;
 }) {
   const isSignedIn = Boolean(userId);
   return (
@@ -96,11 +103,44 @@ export function ChapterReader({
           {choices.length === 0 ? (
             <p className={styles.empty}>No choices yet — be the first to continue this story.</p>
           ) : (
-            <ChoiceList storyId={storyId} choices={choices} userId={userId} />
+            <ChoiceList storyId={storyId} chapterId={chapterId} choices={choices} userId={userId} />
           )}
+          {isAuthor ? (
+            <ul className={styles.promptManageList}>
+              {choices
+                .filter((choice) => choice.kind === 'prompt')
+                .map((prompt) => (
+                  <li key={prompt.optionId} className={styles.promptManageRow}>
+                    <span>{prompt.label}</span>
+                    <form
+                      action={deleteSuggestedPromptAction.bind(null, storyId, chapterId, prompt.optionId)}
+                    >
+                      <button type="submit" className={styles.promptDelete} aria-label={`Remove suggested prompt: ${prompt.label}`}>
+                        ×
+                      </button>
+                    </form>
+                  </li>
+                ))}
+            </ul>
+          ) : null}
           <Link href={`/stories/${storyId}/chapters/${chapterId}/new`} className={`btn btn--secondary ${styles.addChapter}`}>
             Add a chapter
           </Link>
+          {isAuthor ? (
+            <form
+              action={addSuggestedPromptAction.bind(null, storyId, chapterId)}
+              className={styles.addPromptForm}
+              aria-label="Add a suggested prompt"
+            >
+              <label className={styles.addPromptLabel}>
+                <span className="sr-only">Suggested prompt label</span>
+                <input type="text" name="label" placeholder="Suggest a next choice…" required />
+              </label>
+              <button type="submit" className="btn btn--secondary">
+                ✎ Suggest
+              </button>
+            </form>
+          ) : null}
         </section>
 
         <ChapterTags

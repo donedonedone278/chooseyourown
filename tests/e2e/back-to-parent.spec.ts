@@ -27,6 +27,7 @@ test('the child chapter reader links back to its structural parent, root has no 
   const rootUrl = page.url();
 
   await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.getByLabel('Choice label').fill(childTitle);
   await page.getByLabel('Chapter title').fill(childTitle);
   await page.getByLabel('Chapter content').fill('A branch.');
   await page.getByRole('button', { name: 'Publish chapter' }).click();

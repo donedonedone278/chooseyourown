@@ -37,6 +37,7 @@ test('signed-in user starts a story and adds a child chapter', async ({ page }) 
 
   // Add a child chapter under it.
   await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.getByLabel('Choice label').fill('Climb the stairs');
   await page.getByLabel('Chapter title').fill('Climb the stairs');
 
   const childEditor = page.getByLabel('Chapter content');
