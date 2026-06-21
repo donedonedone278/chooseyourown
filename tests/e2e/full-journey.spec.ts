@@ -9,6 +9,7 @@ test('admin can remove a reported chapter end-to-end', async ({ page }) => {
   // 1. Writer publishes a story and a child chapter.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Casey');
+  await page.getByLabel('Handle').fill(`casey-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`casey-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -32,6 +33,7 @@ test('admin can remove a reported chapter end-to-end', async ({ page }) => {
   // 2. A second signed-in reader reports it.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Riley');
+  await page.getByLabel('Handle').fill(`riley-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`riley-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();

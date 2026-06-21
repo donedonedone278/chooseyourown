@@ -9,6 +9,7 @@ test('views increment per unique viewer (author excluded, idempotent on reload) 
   // Author publishes a chapter.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Riley');
+  await page.getByLabel('Handle').fill(`riley-views-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`riley-views-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -33,6 +34,7 @@ test('views increment per unique viewer (author excluded, idempotent on reload) 
   const pageA = await contextA.newPage();
   await pageA.goto('/auth/sign-up');
   await pageA.getByLabel('Display name').fill('Avery');
+  await pageA.getByLabel('Handle').fill(`avery-views-${Math.random().toString(36).slice(2, 8)}`);
   await pageA.getByLabel('Email').fill(`avery-views-${stamp}@example.com`);
   await pageA.getByLabel('Password').fill('password123');
   await pageA.getByRole('button', { name: 'Create account' }).click();
@@ -51,6 +53,7 @@ test('views increment per unique viewer (author excluded, idempotent on reload) 
   const pageB = await contextB.newPage();
   await pageB.goto('/auth/sign-up');
   await pageB.getByLabel('Display name').fill('Bailey');
+  await pageB.getByLabel('Handle').fill(`bailey-views-${Math.random().toString(36).slice(2, 8)}`);
   await pageB.getByLabel('Email').fill(`bailey-views-${stamp}@example.com`);
   await pageB.getByLabel('Password').fill('password123');
   await pageB.getByRole('button', { name: 'Create account' }).click();
@@ -80,6 +83,7 @@ test('opening a chapter from the feed then pressing Back marks it read without a
   // Author publishes a chapter.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Quincy');
+  await page.getByLabel('Handle').fill(`quincy-back-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`quincy-back-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -97,6 +101,7 @@ test('opening a chapter from the feed then pressing Back marks it read without a
   const reader = await context.newPage();
   await reader.goto('/auth/sign-up');
   await reader.getByLabel('Display name').fill('Quinn');
+  await reader.getByLabel('Handle').fill(`quinn-back-${Math.random().toString(36).slice(2, 8)}`);
   await reader.getByLabel('Email').fill(`quinn-back-${stamp}@example.com`);
   await reader.getByLabel('Password').fill('password123');
   await reader.getByRole('button', { name: 'Create account' }).click();
@@ -126,6 +131,7 @@ test('a logged-out visitor can open a chapter without a deviceId cookie yet, vie
   // Author publishes a chapter.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Jordan');
+  await page.getByLabel('Handle').fill(`jordan-anon-views-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`jordan-anon-views-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();

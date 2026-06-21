@@ -8,17 +8,21 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  displayName  String
-  passwordHash String
-  isAdmin      Boolean       @default(false)
-  stories      Story[]
-  chapters     Chapter[]
-  likes        ChapterLike[]
-  reports      ChapterReport[]
-  tagsAdded    ChapterTag[]
-  views        ChapterView[]
+  id               String        @id @default(cuid())
+  email            String        @unique
+  username         String        @unique
+  displayName      String
+  passwordHash     String
+  isAdmin          Boolean       @default(false)
+  profileViewCount Int           @default(0)
+  stories          Story[]
+  chapters         Chapter[]
+  likes            ChapterLike[]
+  reports          ChapterReport[]
+  tagsAdded        ChapterTag[]
+  views            ChapterView[]
+  profileViews     ProfileView[] @relation("ProfileViews")
+  profileViewsMade ProfileView[] @relation("ProfileViewsMade")
 }
 
 model Story {
@@ -110,4 +114,16 @@ model ChapterView {
   user      User?    @relation(fields: [userId], references: [id])
 
   @@unique([chapterId, viewerKey])
+}
+
+model ProfileView {
+  id            String   @id @default(cuid())
+  profileUserId String
+  viewerKey     String
+  userId        String?
+  createdAt     DateTime @default(now())
+  profile       User     @relation("ProfileViews", fields: [profileUserId], references: [id])
+  viewer        User?    @relation("ProfileViewsMade", fields: [userId], references: [id])
+
+  @@unique([profileUserId, viewerKey])
 }

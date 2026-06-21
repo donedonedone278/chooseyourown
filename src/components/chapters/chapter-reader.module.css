@@ -27,6 +27,13 @@
   }
 }
 
+.byline {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .body {
   font-size: var(--step-1);
 }

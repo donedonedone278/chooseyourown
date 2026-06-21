@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 
 import { signIn } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { isValidHandle, RESERVED_HANDLES } from '@/lib/handles';
 import { hashPassword } from '@/lib/passwords';
 
 function readCredentials(formData: FormData) {
@@ -17,18 +18,29 @@ function readCredentials(formData: FormData) {
 
 export async function signUp(formData: FormData) {
   const displayName = String(formData.get('displayName') ?? '').trim();
+  const handle = String(formData.get('handle') ?? '').trim().toLowerCase();
   const { email, password } = readCredentials(formData);
 
-  if (!displayName || !email || !password) {
+  if (!displayName || !email || !password || !handle) {
     redirect('/auth/sign-up?error=MissingFields');
+  }
+
+  if (!isValidHandle(handle) || RESERVED_HANDLES.has(handle)) {
+    redirect('/auth/sign-up?error=InvalidHandle');
   }
 
   try {
     const passwordHash = await hashPassword(password);
-    await db.user.create({ data: { displayName, email, passwordHash } });
+    await db.user.create({ data: { displayName, email, username: handle, passwordHash } });
   } catch (error) {
-    // A duplicate email is a known, user-facing case — not a crash.
+    // A duplicate email or handle is a known, user-facing case — not a crash.
+    // `meta.target` tells us which unique constraint fired.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const target = error.meta?.target;
+      const fields = Array.isArray(target) ? target : typeof target === 'string' ? [target] : [];
+      if (fields.some((field) => field.includes('username'))) {
+        redirect('/auth/sign-up?error=HandleTaken');
+      }
       redirect('/auth/sign-up?error=EmailTaken');
     }
     throw error;

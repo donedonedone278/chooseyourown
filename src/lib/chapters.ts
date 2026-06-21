@@ -69,6 +69,7 @@ export async function getChapterWithChoices(chapterId: string) {
     where: { id: chapterId, deletedAt: null },
     include: {
       story: true,
+      author: { select: { id: true, displayName: true } },
       _count: { select: { likes: true } },
       childChapters: {
         where: { deletedAt: null },

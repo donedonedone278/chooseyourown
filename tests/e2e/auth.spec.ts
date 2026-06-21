@@ -2,10 +2,12 @@ import { expect, test } from '@playwright/test';
 
 test('a new user can create an account and sees signed-in navigation', async ({ page }) => {
   // Unique email per run so the test is repeatable against the shared dev db.
-  const email = `avery-${Date.now()}@example.com`;
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const email = `avery-${stamp}@example.com`;
 
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Avery');
+  await page.getByLabel('Handle').fill(`avery-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -30,11 +32,13 @@ test('signing in with an account that does not exist shows an error instead of c
 test('signing up with an already-registered email shows an error instead of crashing', async ({
   page
 }) => {
-  const email = `dupe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const email = `dupe-${stamp}@example.com`;
 
   // First account succeeds and signs in.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Dupe One');
+  await page.getByLabel('Handle').fill(`dupe-one-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -45,6 +49,7 @@ test('signing up with an already-registered email shows an error instead of cras
   const freshPage = await fresh.newPage();
   await freshPage.goto('/auth/sign-up');
   await freshPage.getByLabel('Display name').fill('Dupe Two');
+  await freshPage.getByLabel('Handle').fill(`dupe-two-${Math.random().toString(36).slice(2, 8)}`);
   await freshPage.getByLabel('Email').fill(email);
   await freshPage.getByLabel('Password').fill('password123');
   await freshPage.getByRole('button', { name: 'Create account' }).click();

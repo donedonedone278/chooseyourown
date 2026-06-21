@@ -6,6 +6,7 @@ test('WYSIWYG editor supports paragraphs, bold/italic, and a Markdown view', asy
   // Writing is auth-gated, so create an account first.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Devon');
+  await page.getByLabel('Handle').fill(`devon-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`devon-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();

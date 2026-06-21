@@ -18,6 +18,7 @@ export function ChapterReader({
   title,
   content,
   storyTitle,
+  author,
   choices,
   likeCount,
   viewCount,
@@ -33,6 +34,7 @@ export function ChapterReader({
   title: string;
   content: string;
   storyTitle: string;
+  author: { id: string; displayName: string };
   choices: Choice[];
   likeCount: number;
   viewCount: number;
@@ -60,13 +62,22 @@ export function ChapterReader({
           </Link>
         ) : null}
         <h1>{title}</h1>
+        <p className={styles.byline}>
+          by <Link href={`/users/${author.id}`}>{author.displayName}</Link>
+        </p>
         <div className={styles.body}>
           <MarkdownContent markdown={content} />
         </div>
 
         <section aria-label="Reactions" className={styles.reactions}>
-          <Stat kind="likes" value={likeCount} active={viewerHasLiked} className={styles.likeCount} />
-          <Stat kind="views" value={viewCount} className={styles.viewCount} />
+          <Stat
+            kind="likes"
+            value={likeCount}
+            active={viewerHasLiked}
+            explain
+            className={styles.likeCount}
+          />
+          <Stat kind="views" value={viewCount} explain className={styles.viewCount} />
           {isSignedIn ? (
             <form action={likeChapterAction.bind(null, chapterId, storyId)}>
               <button type="submit" className={`btn ${styles.likeButton}`} disabled={viewerHasLiked}>

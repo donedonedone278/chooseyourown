@@ -1,12 +1,17 @@
 import Link from 'next/link';
 
 import { signUp } from '@/actions/auth-actions';
+import { HandleField } from '@/components/auth/handle-field';
 import styles from '@/components/chapters/chapter-form.module.css';
 
 const ERROR_MESSAGES: Record<string, string> = {
   EmailTaken: 'That email is already registered.',
-  MissingFields: 'Display name, email, and password are all required.'
+  HandleTaken: 'That handle is already taken.',
+  InvalidHandle: 'Handles are 3-30 characters: lowercase letters, numbers, and hyphens — and not a reserved word.',
+  MissingFields: 'Display name, email, password, and handle are all required.'
 };
+
+const DISPLAY_NAME_INPUT_ID = 'sign-up-display-name';
 
 export default async function SignUpPage({
   searchParams
@@ -28,8 +33,9 @@ export default async function SignUpPage({
         <form action={signUp} className={styles.form}>
           <label>
             Display name
-            <input name="displayName" type="text" required />
+            <input id={DISPLAY_NAME_INPUT_ID} name="displayName" type="text" required />
           </label>
+          <HandleField displayNameInputId={DISPLAY_NAME_INPUT_ID} />
           <label>
             Email
             <input name="email" type="email" required />
