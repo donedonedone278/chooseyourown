@@ -17,7 +17,8 @@
     "test": "npm run lint && npm run typecheck && npm run test:unit && npm run test:e2e",
     "check": "bash scripts/check.sh",
     "db:reset": "bash scripts/db-reset.sh",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:seed:test": "bash scripts/seed-test-data.sh"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
