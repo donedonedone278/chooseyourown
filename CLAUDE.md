@@ -56,6 +56,21 @@ invisible to the other person.
    green. **Never use git worktrees / `isolation: worktree` for this** — implement on the
    normal feature branch in the main working tree (the subagent shares it). Worktrees lack
    `node_modules`, fork the checkout in confusing ways, and aren't how we work here.
+   - **Update the dev seed to demo the feature.** Part of *every* feature is explicitly
+     deciding whether the demo seed should show it — and for anything user-visible the answer
+     is almost always **yes**. When yes, update **the committed dev-data seed itself**
+     (`prisma/seed-dev.ts` — all users/stories/chapters; the data the phone preview is built
+     from, since `npm run db:reset` runs it after the setup seed). `prisma/seed.ts` is the
+     **setup** seed — official tags only, no content; don't add users/stories/chapters there.
+     **Never** hand-insert rows into the db, run a throwaway script, or tweak it as a one-off.
+     The phone preview and the next contributor's `db:reset` only ever see what the seed
+     creates, so anything not in the seed effectively does not exist. Seed it **thoroughly**,
+     not with one token example: the feature should appear across *many* chapters/stories and
+     in *every meaningful state* (e.g. a new edge/option/flag shown on lots of nodes, at
+     varying depths, in each on/off or claimed/unclaimed variant) so it can actually be
+     exercised the moment the preview comes up. A new field that distinguishes two things
+     (e.g. a choice label vs. a chapter title) must be seeded with the two values *different*
+     on a representative spread, or the seed silently fails to demo the very thing it adds.
 4. **Get the user's approval** of the result. ("The user" = whichever contributor owns the
    branch; you approve and merge your own work — there's no cross-review gate.)
 5. **Reset `tasks/todo.md` on the branch, then sync + merge + push:**
@@ -107,7 +122,7 @@ npm run build
 npm run lint           # next lint (eslint-config-next, core-web-vitals)
 npm run typecheck      # tsc --noEmit
 npm run test:unit      # Vitest: domain/unit tests
-npm run test:e2e       # Playwright: browser journeys (chromium)
+npm run test:e2e       # Playwright: browser journeys (chromium) — isolated db + port :3100
 npm test               # full local gate: lint → typecheck → unit → e2e (fail-fast)
 npm run check          # same gate, low-noise: one ✓ line per stage, output only for a failure
 npm run where          # "where were we?" snapshot: branch, uncommitted, recent commits, unmerged branches, todo + server state
@@ -123,9 +138,11 @@ npm run test:unit -- tests/unit/chapters.test.ts
 npm run test:unit -- -t "creates a root chapter"
 ```
 
-Run a single Playwright spec:
+Run a single Playwright spec (go through the wrapper so the isolated `e2e.db` is
+built/migrated/seeded and the server binds it on :3100 — a raw `npx playwright test`
+skips that setup):
 ```bash
-npx playwright test tests/e2e/home.spec.ts --project=chromium
+npm run test:e2e -- tests/e2e/home.spec.ts
 ```
 
 ## Development loop (do this without being asked)
@@ -170,7 +187,7 @@ LAN access. Don't put multi-step `&&` command chains in docs — add a script un
 - `chapters.ts` — invariant-enforcing creators (`createStoryWithRootChapter` runs in a `$transaction`; `createChildChapter` validates parent belongs to the story and isn't deleted).
 - `stories.ts` — story/feed queries.
 
-**Ordering rule:** child-chapter choices render in creation order (`createdAt ASC`) so the UI stays stable as like counts change. Don't sort choices by likes.
+**Ordering rule:** in the option select, **realized (already-written) choices always list before unclaimed suggested prompts**; within each group, order is creation order (`createdAt ASC`) so the UI stays stable as like counts change. Don't sort choices by likes. This is enforced centrally in `getChapterWithChoices` (`src/lib/chapters.ts`).
 
 ## UI principles
 
@@ -208,9 +225,9 @@ Three test tiers — keep each one in its lane:
 - Use the factories in `src/test/factories.ts` (`createUser`, `createStory`, `createChapter`) for test data — they upsert authors and generate unique fields, so don't hand-roll Prisma inserts in tests.
 - **Unit (node-tier) tests must not import server-only code** — server components, `src/lib/auth.ts`, or anything that pulls in `next-auth`/`next/server`. Those can't load in Vitest's node environment and will fail the whole file at import time. Test pure domain/lib modules there; exercise auth and server components through Playwright instead.
 - **Client-component tests** opt into jsdom with a `// @vitest-environment jsdom` docblock on the first line and use `@testing-library/react` (`render`/`screen`). `@testing-library/jest-dom` matchers are registered globally via `src/test/setup-dom.ts`.
-- **Playwright** (`playwright.config.ts`): chromium only, baseURL `http://127.0.0.1:3000`, auto-starts `npm run dev` and reuses an existing server. The plan treats browser coverage as first-class — new user-facing features should land with an e2e spec.
+- **Playwright** (`playwright.config.ts`): chromium only. The browser suite runs **isolated from the dev/preview db**: `scripts/test-e2e.sh` (the `test:e2e` target) rebuilds `prisma/e2e.db` (drop → migrate → setup seed → dev seed) and runs Playwright against a dev server on **port :3100** bound to that db (`baseURL http://127.0.0.1:3100`, `reuseExistingServer: false`). So `npm test` never writes to `dev.db`, and a running `npm run dev:phone` (:3000) is never reused or clobbered. The plan treats browser coverage as first-class — new user-facing features should land with an e2e spec.
 - **Scope e2e queries to a landmark region** (`page.locator('header' | 'main' | 'nav').getByRole(...)`) rather than querying the whole page. This is the standing convention — it makes assertions intention-revealing and avoids strict-mode collisions when the same accessible name legitimately appears in nav and page content. Don't give two interactive elements the same accessible name *and* destination; differentiate the copy instead (e.g. nav "Start a story" vs homepage hero "Write the first chapter").
-- E2e tests that create rows in the shared dev db must use unique inputs per run so they stay repeatable (there is no per-test db reset for the browser suite yet). `Date.now()` **alone is not enough** — Playwright runs spec files in parallel workers, so two specs sharing an email prefix can collide on the same millisecond. Add randomness: ``const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;`` then `` `riley-${stamp}@example.com` ``.
+- E2e tests create rows in `e2e.db`, which is rebuilt fresh once per suite run but **shared across all parallel workers within that run** (no per-test reset), so tests must use unique inputs per run to stay repeatable and worker-collision-free. `Date.now()` **alone is not enough** — Playwright runs spec files in parallel workers, so two specs sharing an email prefix can collide on the same millisecond. Add randomness: ``const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;`` then `` `riley-${stamp}@example.com` ``.
 - The plan is strictly **test-first**: write the failing test, confirm it fails, implement, confirm it passes, then commit. Follow that rhythm when continuing the plan.
 
 ## Environment
@@ -219,7 +236,7 @@ Development runs on **WSL2** (Linux subsystem on a Windows host). Keep the repo 
 
 **Node is managed with [Volta](https://volta.sh) and pinned in `package.json`** (`"volta": { "node": "..." }`) — treat the runtime like any other versioned project dependency, not a system install. Don't rely on the distro's `apt` Node; install Volta once (`curl https://get.volta.sh | bash`) and it auto-selects the pinned version per project. **Favor higher versions when possible**: keep Node on a current LTS and dependencies up to date, bumping the pin/deps deliberately rather than letting an old system default dictate the floor (an old Node is what forced earlier tooling workarounds). Note: Volta's shims only activate in interactive shells by default, so non-interactive/CI invocations may need `export PATH="$HOME/.volta/bin:$PATH"` (or an equivalent) first.
 
-`DATABASE_URL` (SQLite, e.g. `file:./dev.db`) and `AUTH_SECRET` (Auth.js JWT signing) are both required; tests default `DATABASE_URL` to `file:./test.db`. `.env` and `*.db` are gitignored.
+`DATABASE_URL` (SQLite, e.g. `file:./dev.db`) and `AUTH_SECRET` (Auth.js JWT signing) are both required; unit tests default `DATABASE_URL` to `file:./test.db` and the browser suite uses its own `file:./e2e.db` (so neither touches `dev.db`). `.env` and `*.db` are gitignored.
 
 First-time local setup (these artifacts don't live in git, so a fresh clone needs them):
 ```bash
@@ -233,7 +250,7 @@ npx playwright install chromium    # browser for the e2e stage of `npm test`
 **Schema changes go through Prisma Migrate, never `db push`.** Edit `prisma/schema.prisma`,
 then `npx prisma migrate dev --name <short-desc>` to generate + apply a migration under
 `prisma/migrations/` (commit it — migrations are version-controlled). `npm run db:reset`
-rebuilds the dev db from scratch (drop → `migrate deploy` → seed) any time you want a clean,
-known state with the demo/dummy data; it's idempotent and repeatable. Tests apply migrations
-via `migrate deploy`. The legacy `db push` flow has been retired so schema history stays
-reviewable and reproducible.
+rebuilds the dev db from scratch (drop → `migrate deploy` → setup seed → dev seed) any time
+you want a clean, known state with the demo/dummy data; it's idempotent and repeatable. Tests
+apply migrations via `migrate deploy`. The legacy `db push` flow has been retired so schema
+history stays reviewable and reproducible.

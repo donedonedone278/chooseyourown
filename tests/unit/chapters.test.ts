@@ -18,7 +18,7 @@ describe('chapter invariants', () => {
       storyId: story.id,
       parentChapterId: story.rootChapterId,
       authorId: childAuthor.id,
-      title: 'Open the gate',
+      label: 'Open the gate',
       content: 'The gate opens.'
     });
 

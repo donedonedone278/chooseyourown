@@ -21,8 +21,9 @@ test('admin can remove a reported chapter end-to-end', async ({ page }) => {
   await page.getByLabel('Chapter content').fill('The root chapter.');
   await page.getByRole('button', { name: 'Publish first chapter' }).click();
 
-  await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.locator('main').getByRole('link', { name: 'Create your own option' }).click();
   const childTitle = `Flagged Chapter ${stamp}`;
+  await page.getByLabel('Choice label').fill(childTitle);
   await page.getByLabel('Chapter title').fill(childTitle);
   await page.getByLabel('Chapter content').fill('Content that gets reported.');
   await page.getByRole('button', { name: 'Publish chapter' }).click();

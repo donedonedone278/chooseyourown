@@ -34,12 +34,33 @@ that fails. Use it when you just want pass/fail plus the first failure without s
 
 Rebuilds the local **dev** database from scratch and loads the demo/dummy data in one
 repeatable step: drop `prisma/dev.db*` → `prisma migrate deploy` (apply all committed
-migrations) → `prisma db seed`. Use it for first-time setup or whenever you want a clean,
-known dev db. Idempotent and safe to re-run. Sets both the Volta PATH and `node_modules/.bin`
-(so Prisma can spawn the `tsx` seed). Deliberately the explicit delete → deploy → seed form
-rather than `prisma migrate reset --force` — non-interactive, no confirmation prompt, and it
-never trips the agent-blocked reset path. Schema changes themselves go through
-`npx prisma migrate dev --name <desc>` (see `CLAUDE.md` → Environment); `db push` is retired.
+migrations) → `prisma db seed` (the **setup** seed, `prisma/seed.ts` — official tags only)
+→ `seed-dev.sh` (the **dev-data** seed, `prisma/seed-dev.ts` — all accounts + the five demo
+stories). The split keeps "set up the db" and "populate it with dev data" separable, while
+one command still yields a fully-populated preview. Use it for first-time setup or whenever
+you want a clean, known dev db. Idempotent and safe to re-run. Sets both the Volta PATH and
+`node_modules/.bin` (so Prisma can spawn the `tsx` seeds). Deliberately the explicit delete
+→ deploy → seed form rather than `prisma migrate reset --force` — non-interactive, no
+confirmation prompt, and it never trips the agent-blocked reset path. Schema changes
+themselves go through `npx prisma migrate dev --name <desc>` (see `CLAUDE.md` → Environment);
+`db push` is retired.
+
+## `seed-dev.sh` — `npm run db:seed:dev`
+
+Loads just the **dev-data** seed (`prisma/seed-dev.ts`: all accounts + the five demo stories)
+into the existing dev db — additive and idempotent (re-runs skip what already exists). It
+does **not** drop or migrate; `db:reset` runs it for you after migrating. Sources `.env` so
+the bare `tsx` run has `DATABASE_URL`/`AUTH_SECRET` (unlike `prisma db seed`, which loads
+`.env` itself).
+
+## `test-e2e.sh` — `npm run test:e2e`
+
+Runs the Playwright suite **isolated from the dev/preview db**. It rebuilds a dedicated
+`prisma/e2e.db` (drop → `migrate deploy` → setup seed → dev seed) and runs Playwright against
+a Next dev server on **port :3100** bound to that db (`reuseExistingServer: false`). This is
+why the browser suite never pollutes `dev.db` and never collides with a running
+`npm run dev:phone` on :3000. Args pass through, so `npm run test:e2e -- tests/e2e/home.spec.ts`
+runs a single spec with the same isolation.
 
 ## `claim.sh` — `npm run claim <feat/initials-name>`
 

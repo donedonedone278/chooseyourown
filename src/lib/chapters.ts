@@ -1,6 +1,23 @@
 import { Prisma } from '@prisma/client';
 
 import { db } from '@/lib/db';
+import { MAX_OPTION_LABEL } from '@/lib/chapter-constants';
+
+/** Shared cap for a choice label (`ChapterOption.label`), enforced by the domain
+ * helpers below and the server action that wraps them. Defined in the client-safe
+ * `chapter-constants` module; re-exported here so existing import sites keep working. */
+export { MAX_OPTION_LABEL };
+
+function validateLabel(rawLabel: string): string {
+  const label = rawLabel.trim();
+  if (!label) {
+    throw new Error('Choice label is required.');
+  }
+  if (label.length > MAX_OPTION_LABEL) {
+    throw new Error(`Choice label must be ${MAX_OPTION_LABEL} characters or fewer.`);
+  }
+  return label;
+}
 
 export async function createStoryWithRootChapter(input: {
   title: string;
@@ -36,48 +53,157 @@ export async function createStoryWithRootChapter(input: {
   });
 }
 
+/**
+ * Create a child chapter. Two modes, both producing exactly one realized
+ * `ChapterOption` (the invariant: every non-root, non-deleted chapter has
+ * exactly one incoming realized option):
+ *  - **Open-branch** (`optionId` absent): the writer supplies a new `label`
+ *    (required) and an optional `title` (defaults to the label). A fresh
+ *    chapter is created, then a realized option pointing at it.
+ *  - **Claim** (`optionId` present): the writer is filling in an existing
+ *    unclaimed suggested prompt. The chapter is created, then the prompt is
+ *    claimed via a guarded `updateMany` (only succeeds if it's still
+ *    unclaimed and belongs to this parent) — a concurrent double-claim throws
+ *    and rolls back the whole transaction.
+ */
 export async function createChildChapter(input: {
   storyId: string;
   parentChapterId: string;
   authorId: string;
-  title: string;
+  label: string;
+  title?: string;
   content: string;
+  optionId?: string;
 }) {
-  const parent = await db.chapter.findUnique({ where: { id: input.parentChapterId } });
+  const label = validateLabel(input.label);
+  const finalTitle = input.title?.trim() || label;
 
-  if (!parent || parent.storyId !== input.storyId || parent.deletedAt) {
-    throw new Error('Parent chapter not found in story');
+  return db.$transaction(async (tx) => {
+    const parent = await tx.chapter.findUnique({ where: { id: input.parentChapterId } });
+
+    if (!parent || parent.storyId !== input.storyId || parent.deletedAt) {
+      throw new Error('Parent chapter not found in story');
+    }
+
+    const chapter = await tx.chapter.create({
+      data: {
+        storyId: input.storyId,
+        parentChapterId: input.parentChapterId,
+        authorId: input.authorId,
+        title: finalTitle,
+        content: input.content
+      }
+    });
+
+    if (input.optionId) {
+      const claim = await tx.chapterOption.updateMany({
+        where: { id: input.optionId, childChapterId: null, parentChapterId: input.parentChapterId },
+        data: { childChapterId: chapter.id }
+      });
+      if (claim.count === 0) {
+        throw new Error('prompt already claimed');
+      }
+    } else {
+      await tx.chapterOption.create({
+        data: {
+          parentChapterId: input.parentChapterId,
+          childChapterId: chapter.id,
+          label,
+          createdByUserId: input.authorId
+        }
+      });
+    }
+
+    return chapter;
+  });
+}
+
+/** Author seeds an unclaimed suggested prompt on a chapter they don't yet
+ * have a child for — label only, no destination chapter. Caller-side
+ * (the action) is responsible for checking the caller is the parent's author. */
+export async function addSuggestedPrompt(input: {
+  parentChapterId: string;
+  authorId: string;
+  label: string;
+}) {
+  const label = validateLabel(input.label);
+
+  const parent = await db.chapter.findUnique({ where: { id: input.parentChapterId } });
+  if (!parent || parent.deletedAt) {
+    throw new Error('Parent chapter not found');
   }
 
-  return db.chapter.create({
+  return db.chapterOption.create({
     data: {
-      storyId: input.storyId,
       parentChapterId: input.parentChapterId,
-      authorId: input.authorId,
-      title: input.title,
-      content: input.content
+      childChapterId: null,
+      label,
+      createdByUserId: input.authorId
     }
   });
 }
 
+/** Remove an unclaimed suggested prompt. Refuses to delete a realized option
+ * (already claimed/written) or one the caller doesn't own the parent of. */
+export async function deleteSuggestedPrompt(input: { optionId: string; userId: string }) {
+  const option = await db.chapterOption.findUnique({
+    where: { id: input.optionId },
+    include: { parentChapter: true }
+  });
+
+  if (!option || option.childChapterId !== null) {
+    throw new Error('Suggested prompt not found');
+  }
+  if (option.parentChapter.authorId !== input.userId) {
+    throw new Error('Only the parent chapter author can remove this prompt');
+  }
+
+  await db.chapterOption.delete({ where: { id: input.optionId } });
+}
+
 /**
- * Load a chapter (if not soft-deleted) with its story and its non-deleted child
- * chapters. Choices render in creation order so the UI is stable as likes change.
+ * Load a chapter (if not soft-deleted) with its story and its outgoing
+ * options (the choice list). Realized (already-written) options always list
+ * before unclaimed suggested prompts; within each group order is creation
+ * order (createdAt ASC) so the UI is stable as likes change. A realized option
+ * whose child was soft-deleted is dropped here (the caller never has to
+ * special-case it); an unclaimed suggested prompt has no child and is always kept.
  */
 export async function getChapterWithChoices(chapterId: string) {
-  return db.chapter.findFirst({
+  const chapter = await db.chapter.findFirst({
     where: { id: chapterId, deletedAt: null },
     include: {
       story: true,
       author: { select: { id: true, displayName: true } },
       _count: { select: { likes: true } },
-      childChapters: {
-        where: { deletedAt: null },
+      optionsFromHere: {
         orderBy: { createdAt: 'asc' },
-        include: { _count: { select: { likes: true } } }
+        include: {
+          childChapter: {
+            select: {
+              id: true,
+              title: true,
+              viewCount: true,
+              deletedAt: true,
+              _count: { select: { likes: true } }
+            }
+          }
+        }
       }
     }
   });
+
+  if (!chapter) return chapter;
+
+  return {
+    ...chapter,
+    optionsFromHere: chapter.optionsFromHere
+      .filter((option) => !option.childChapter || option.childChapter.deletedAt === null)
+      // Realized (already-written) choices always come before unclaimed
+      // suggested prompts. Array.sort is stable, so the createdAt-ASC order from
+      // the query is preserved within each group.
+      .sort((a, b) => Number(Boolean(b.childChapter)) - Number(Boolean(a.childChapter)))
+  };
 }
 
 /**

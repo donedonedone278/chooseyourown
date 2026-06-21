@@ -19,8 +19,7 @@ Volta once and it will pick up the project's pinned Node version automatically.
 curl https://get.volta.sh | bash   # once per machine
 npm install                        # also runs `prisma generate` via postinstall
 cp .env.example .env               # then set AUTH_SECRET to a long random string
-npx prisma db push                 # create the dev SQLite db from the schema
-npx prisma db seed                 # seed an admin user (admin@example.com / password123)
+npm run db:reset                   # migrate + seed: official tags, demo accounts, 5 stories
 npx playwright install chromium    # browser for the e2e test stage
 ```
 
@@ -36,9 +35,10 @@ npm run build
 npm run lint            # next lint (eslint-config-next, core-web-vitals)
 npm run typecheck       # tsc --noEmit
 npm run test:unit       # Vitest: domain/unit + jsdom component tests
-npm run test:e2e        # Playwright: browser journeys (chromium)
+npm run test:e2e        # Playwright: browser journeys (chromium) — own db + port :3100
 npm test                # full local gate: lint → typecheck → unit → e2e (fail-fast)
-npm run db:seed         # re-run the idempotent admin seed (prisma db seed)
+npm run db:reset        # rebuild dev db: migrate → setup seed (tags) → dev seed (stories)
+npm run db:seed:dev     # re-run just the idempotent dev-data seed (stories + accounts)
 ```
 
 ## Testing from a phone

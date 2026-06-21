@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # Rebuild the local dev database from scratch and load the demo/dummy data, in one
-# repeatable step: drop dev.db -> apply all migrations -> seed. Run it for first-time
-# setup or any time you want a clean, known dev db. Idempotent — safe to re-run.
+# repeatable step: drop dev.db -> apply all migrations -> setup seed (official tags)
+# -> dev seed (stories + accounts). Run it for first-time setup or any time you want
+# a clean, known dev db. Idempotent — safe to re-run.
 #
 #   npm run db:reset
 #
-# Deliberately the explicit delete -> `migrate deploy` -> `db seed` form (not
+# Deliberately the explicit delete -> `migrate deploy` -> seed form (not
 # `prisma migrate reset --force`): non-interactive, no confirmation prompt, and it
 # never trips the agent-blocked reset path. See scripts/README.md and CLAUDE.md.
 set -euo pipefail
 
 # Volta shims aren't on PATH in non-interactive shells; node_modules/.bin must be on
-# PATH too so Prisma can spawn the `tsx prisma/seed.ts` seed command.
+# PATH too so Prisma can spawn the `tsx prisma/seed.ts` setup seed (and seed-dev.sh).
 export PATH="$HOME/.volta/bin:$PATH"
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 export PATH="$PWD/node_modules/.bin:$PATH"
@@ -27,11 +28,14 @@ rm -f prisma/dev.db prisma/dev.db-journal prisma/dev.db-wal prisma/dev.db-shm
 echo "▸ Applying migrations (prisma migrate deploy)…"
 prisma migrate deploy
 
-echo "▸ Seeding dummy data (prisma db seed)…"
+echo "▸ Seeding reference data (prisma db seed → official tags)…"
 prisma db seed
 
+echo "▸ Seeding dev data (stories + accounts)…"
+bash "$(dirname "${BASH_SOURCE[0]}")/seed-dev.sh"
+
 echo
-echo "✓ Dev db rebuilt from migrations + seeded. Sign in with the demo accounts from prisma/seed.ts."
+echo "✓ Dev db rebuilt from migrations + seeded. Sign in with the accounts printed above (from prisma/seed-dev.ts)."
 
 # A dev server started before the reset still holds a handle to the now-deleted db
 # file (a stale inode), so its queries silently fail until it's restarted.
