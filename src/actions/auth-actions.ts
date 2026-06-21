@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 
-import { signIn } from '@/lib/auth';
+import { signIn, signOut } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { isValidHandle, RESERVED_HANDLES } from '@/lib/handles';
 import { hashPassword } from '@/lib/passwords';
@@ -65,4 +65,8 @@ export async function signInWithCredentials(formData: FormData) {
     }
     throw error;
   }
+}
+
+export async function signOutAction() {
+  await signOut({ redirectTo: '/' });
 }
