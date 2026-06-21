@@ -164,4 +164,27 @@ describe('ChoiceList', () => {
       '/stories/story-1/chapters/chapter-1/new'
     );
   });
+
+  it('divides written options from the suggestions group when realized choices exist', () => {
+    render(
+      <ChoiceList
+        storyId="story-1"
+        chapterId="chapter-1"
+        choices={[makeRealizedChoice(), makePromptChoice()]}
+      />
+    );
+
+    expect(screen.getByText(/write the next chapter/i)).toBeInTheDocument();
+  });
+
+  it('omits the divider when there are no written options (nothing to divide from)', () => {
+    render(
+      <ChoiceList storyId="story-1" chapterId="chapter-1" choices={[makePromptChoice()]} />
+    );
+
+    expect(screen.queryByText(/write the next chapter/i)).not.toBeInTheDocument();
+    // the suggestion + create card still render
+    expect(screen.getByRole('link', { name: /Unwritten/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create your own option' })).toBeInTheDocument();
+  });
 });

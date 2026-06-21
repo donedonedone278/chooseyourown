@@ -93,11 +93,38 @@
   gap: var(--space-3);
 }
 
+.choiceGroups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 .choiceList {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   list-style: none;
+}
+
+/* Boundary between the written paths (above) and the write-a-new-chapter
+   affordances — suggestions + "create your own" (below). A hairline rule on
+   each side of a small muted caption. */
+.choiceDivider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-1) 0;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.choiceDivider::before,
+.choiceDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 .choiceCard {
