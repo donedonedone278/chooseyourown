@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { addSuggestedPrompt, createChildChapter, createStoryWithRootChapter } from '@/lib/chapters';
+import { addTagToChapter } from '@/lib/tags';
 import { slugifyHandle } from '@/lib/handles';
 import { hashPassword } from '@/lib/passwords';
 
@@ -30,7 +31,47 @@ type StoryNode = {
   children?: StoryNode[];
 };
 
-type DemoStory = { title: string; authorEmail: string; root: StoryNode };
+type DemoStory = {
+  title: string;
+  authorEmail: string;
+  // Defaults to 'crowd' (anyone signed in may tag). One demo story uses 'author'
+  // to flex the locked-tagging variant.
+  tagPermission?: 'crowd' | 'author';
+  root: StoryNode;
+};
+
+// Tags per chapter, keyed by chapter title (titles are unique across the demo
+// set). A mix of official tags — which render as icons via the OFFICIAL_TAGS
+// glyph map — and custom tags, which render as text chips. Several chapters
+// carry 5 tags so the choice card's "+N" overflow (MAX_VISIBLE_TAGS = 4) shows.
+const TAGS_BY_TITLE: Record<string, string[]> = {
+  // The Lighthouse at Dunmore — horror / mystery
+  'The Long Walk Out': ['horror', 'mystery', 'lighthouse', 'slow_burn'],
+  'Up to the Lantern Room': ['horror', 'mystery', 'dread'],
+  'Read the Last Entry': ['mystery', 'horror', 'unreliable_narrator', 'cursed_object', 'epistolary'],
+  'Light the Lamp Anyway': ['horror', 'cosmic'],
+  'Leave the Lamp Dark': ['mystery', 'quiet_ending'],
+  'Signal the Mainland': ['horror', 'isolation'],
+  'Down to the Cellar': ['horror', 'mystery', 'claustrophobia'],
+  'Open the Iron Door': ['horror', 'fantasy', 'liminal'],
+  'Barricade It Shut': ['horror', 'siege'],
+  // Signal from Europa — sci_fi / mystery
+  'The Eleven-Minute Delay': ['sci_fi', 'mystery', 'first_contact', 'hard_sf'],
+  'Wake the Captain': ['sci_fi', 'leadership'],
+  'Send a Prime Sequence': ['sci_fi', 'first_contact', 'mathematics'],
+  'Stay Silent and Listen': ['sci_fi', 'mystery', 'paranoia'],
+  'Answer It Yourself': ['sci_fi', 'first_contact', 'hubris', 'suspense', 'solo'],
+  'Trace the New Position': ['sci_fi', 'suspense'],
+  'Cut the Transmitter': ['sci_fi', 'horror', 'doppelganger'],
+  // The Last Tea Shop on Marrow Street — fantasy / romance / comedy
+  'Closing Time': ['fantasy', 'romance', 'cozy', 'magical_realism'],
+  'Serve the Traveller First': ['fantasy', 'romance', 'slow_burn'],
+  'Ask Where They’re Going': ['fantasy', 'wistful'],
+  'Offer Them the Spare Room': ['romance', 'found_family'],
+  'Kneel by the Child': ['fantasy', 'mystery', 'heartwarming'],
+  'Make the Usual': ['fantasy', 'comedy', 'heartwarming', 'nostalgia', 'cozy'],
+  'Admit You Don’t Know It': ['fantasy', 'bittersweet']
+};
 
 const DEMO_AUTHORS: { email: string; displayName: string }[] = [
   { email: 'maya@example.com', displayName: 'Maya Quill' },
@@ -150,6 +191,7 @@ const DEMO_STORIES: DemoStory[] = [
   {
     title: 'Signal from Europa',
     authorEmail: 'theo@example.com',
+    tagPermission: 'author',
     root: {
       title: 'The Eleven-Minute Delay',
       content:
@@ -296,7 +338,8 @@ async function seedDemoStory(
     title: story.title,
     authorId,
     chapterTitle: story.root.title,
-    content: story.root.content
+    content: story.root.content,
+    tagPermission: story.tagPermission
   });
 
   // Unclaimed suggested prompts ("✎ write this" slots) seeded on any chapter that
@@ -304,6 +347,14 @@ async function seedDemoStory(
   async function addPrompts(parentChapterId: string, labels: string[] = []) {
     for (const label of labels) {
       await addSuggestedPrompt({ parentChapterId, authorId, label });
+    }
+  }
+
+  // Tags for this chapter (official → icons, custom → chips), added by the story
+  // author so it works under both 'crowd' and 'author' tag permissions.
+  async function addTags(chapterId: string, title: string) {
+    for (const name of TAGS_BY_TITLE[title] ?? []) {
+      await addTagToChapter({ chapterId, name, userId: authorId });
     }
   }
 
@@ -319,12 +370,14 @@ async function seedDemoStory(
         content: node.content
       });
       await addPrompts(child.id, node.prompts);
+      await addTags(child.id, node.title);
       await seedEngagement(child.id, readerIds, rng);
       await addChildren(child.id, node.children);
     }
   }
 
   await addPrompts(created.rootChapterId, story.root.prompts);
+  await addTags(created.rootChapterId, story.root.title);
   await seedEngagement(created.rootChapterId, readerIds, rng);
   await addChildren(created.rootChapterId, story.root.children);
 }
