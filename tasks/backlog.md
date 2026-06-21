@@ -250,6 +250,9 @@ than just a pure feed."
 also **stories**? cache/refresh strategy for the score (recompute on read vs. periodic).
 **Sketch / notes:** hot score needs likes + views per chapter (views from the counter idea)
 and chapter age; consider a denormalized/cached score column for cheap ordering.
+**See also (2026-06-21):** folded into **"Browsing & discovery surface"** — the home page
+*is* the browse surface (logged-out users land on it, default sort Popular), and Popular gains
+a `6h…all-time` time-window picker. Build these together.
 
 ## Search (tags, titles, etc.)  — _status: refining_
 **The idea:** "There should be searching based on tags and titles and etc."
@@ -263,6 +266,9 @@ present mixed result types (tabs: Stories / Chapters / Writers?); do soft-delete
 and unpublished revisions stay out of the index (yes); ranking across the three types.
 **Sketch / notes:** FTS5 virtual table(s) maintained on chapter create/edit; tie into the
 revision model (Q5) so edits reindex. Heavier than substring but you chose precision.
+**See also (2026-06-21):** subsumed by **"Browsing & discovery surface"** — search is one
+control on the unified browse home, alongside tag filter / recency / stat sorts / popularity
+windows. Don't build a standalone search page.
 
 ## Follow writers + followed-only feed  — _status: refining_
 **The idea:** "Users should be able to follow writers and have a custom feed of just
@@ -321,6 +327,10 @@ hide them from the per-chapter like *count*, or only from the profile list?
 **Sketch / notes:** small `User` settings fields (or a `UserSettings` row); start minimal
 with just `showLikes`. Establishes the settings page pattern. **Now also hosts the tag
 blacklist + its display mode** (see "Tag blacklist" entry).
+**Update (2026-06-21):** also the home for **reading prefs** — text size, font, night/day
+mode, color scheme — which the **reader drawer** ("Dynamic reader header + side drawer")
+surfaces as a reading-relevant subset. Settings #17 stays the source of truth; the drawer is
+a shortcut. Reading prefs are account-persisted (cross-device).
 
 ## Tag blacklist (blur vs hide)  — _status: refining_
 **The idea:** "Users should be able to blacklist tags. In my user settings I should be able
@@ -388,3 +398,127 @@ public like signal — useful in a deep branching tree where it's easy to lose a
 symbols-over-words `STAT_KINDS` vocabulary: **Bookmark** glyph, picked state = **blue fill**
 (parallels the red-fill Heart for likes). Reuses the `<Stat active>` accent mechanism already
 built on `feat/rs-symbols-stat`. Graduates to its own `feat/<initials>-bookmark` branch.
+
+## Browsing & discovery surface  — _status: refining_  (2026-06-21 batch)
+**The idea:** "Browsing (including searching, browsing by tag, browsing by recency, sorting
+by stats, popularity in the past 6hours/day/week/month/year/alltime)."
+**Why / value:** the single discovery surface — how readers find stories/chapters beyond a
+plain reverse-chron list.
+**Relationship to existing entries:** this **absorbs Search (#11)** and **reshapes Home
+feed enrichment (#10)** — they're one discovery surface seen from different angles. Build
+them as one thread, not three.
+**Decided (2026-06-21):**
+- **The home page *is* the browse surface** — especially for **logged-out users, who land
+  directly on browse with a sensible default sort already applied** (lean: Popular). "Very
+  intuitive" — no separate `/browse` route; discovery is the front door, not a destination.
+  (Signed-in landing may later default differently, e.g. a Following feed — see #12.)
+- **Controls:** free-text **search** (FTS5, per #11), **tag filter**, **recency** sort,
+  **stat sorts** (likes / views / descendants), and a **popularity time-window** picker —
+  `6h · day · week · month · year · all-time`. Popularity = the hot-score (#10) computed
+  *within the selected window*.
+**Open questions:**
+- Result type: chapters, stories, or a toggle? (lean: toggle; default depends on sort.)
+- Does the time-window apply only to the Popular sort, or also gate the stat sorts?
+- Logged-out default (Popular) vs signed-in default (Following #12?) on the home landing.
+- How windowed popularity is computed/cached: per-window precompute vs. on-the-fly hot-score
+  over a time-filtered like/view query — ties to view-row retention (see "Chapter view counter").
+**Sketch / notes:** needs likes + views + age per chapter (have likes + `ChapterView`), an
+FTS5 index (#11), and the tag join (#3). Windowed popularity = hot-score over rows within
+`[now − window, now]`.
+
+## Logout control  — _status: ready_  (2026-06-21 batch)
+**The idea:** 'A "logout" button.'
+**Why / value:** **this is a gap today, not future work** — `signOut` is wired in
+`src/lib/auth.ts` but **no UI ever calls it**, so a signed-in user currently cannot log out.
+Small, standalone quick win; high priority because it's a missing basic.
+**Decided / lean:** a sign-out control in the header (and later inside the reader drawer —
+see next entry). A server action calling `signOut`; symbols-over-words → `LogOut` glyph.
+**Open questions:** header always vs. only inside a profile/drawer menu? confirm redirect
+target (home).
+**Sketch / notes:** trivial — `signOut()` server action + a button, wired into
+`site-header.tsx` where "Signed in as …" currently renders (no logout affordance there today).
+
+## Dynamic reader header + side drawer  — _status: refining_  (2026-06-21 batch)
+**The idea:** "Changing the scroll-aware header to be more dynamic (when reading a chapter it
+should show just the story, chapter name, like/save button, and a hamburger menu button that
+opens a side drawer. Populating that side drawer with links to browse, the user's profile,
+settings, text size/font, color scheme, etc."
+**Why / value:** a reading-mode chrome that stays out of the way but keeps the essentials
+(where am I · like/save · menu) one tap away; the drawer becomes the app's primary nav +
+reading-prefs surface.
+**Decided (2026-06-21):**
+- **Header is mode-aware.** In the **reader** it shows: **story title · chapter name · like +
+  save buttons · hamburger**. Elsewhere, the normal site header. (Save = the **Bookmark**
+  entry's blue-fill toggle — build them together.)
+- **Drawer = nav + a *subset* of settings.** Links: **browse · profile · full Settings page**.
+  Plus **reading-relevant prefs inline** — **text size, night/day mode, font, color scheme** —
+  i.e. the drawer carries the *reading* subset, while the **full Settings page (#17)** remains
+  the complete home and source of truth for these prefs. Drawer also holds non-settings items
+  (nav, logout).
+**Relationship to existing entries:** depends on **Bookmark** (save), **Settings #17** (prefs
+home), **Logout control**; the prefs (text size / font / scheme / night mode) are
+**account-persisted settings** in #17, surfaced as a reading subset in the drawer.
+**Open questions:**
+- Persisted (cross-device via #17) vs device-local? — lean **persisted**, since the drawer is
+  explicitly "a subset of the settings available in the full settings page."
+- Night mode / color scheme: does this pull a broader **theming** effort forward as its own
+  dependency (feeds the density tokens below)?
+- Scroll behavior (`header-shell.tsx` already auto-hides on scroll); drawer side (L/R); does
+  the drawer exist globally or only in reading mode?
+**Sketch / notes:** `site-header.tsx` gains a reader variant; new client drawer component;
+reading prefs read/write the #17 settings; theming tokens shared with the visual-density work.
+
+## Tag voting (rank + threshold auto-hide)  — _status: refining_  (2026-06-21 batch)
+**The idea:** "Voting on tags (as in, users who agree with a tag can vote on it to rank it
+higher on the story's list of tags or vote it down to disagree)."
+**Why / value:** crowd-curates which tags best describe a story — good tags rise, mis-tags
+sink — and adds a lightweight moderation lever on the crowd-tagging surface (#3).
+**Decided (2026-06-21):**
+- **Upvote raises rank, downvote lowers it.** Score = upvotes − downvotes; the **story tag
+  list orders by score** (overriding frequency/creation order for *display ranking*).
+- **Downvotes are crowd moderation via threshold auto-hide:** a tag whose score falls **below
+  −N is auto-hidden** from tag lists (soft-removed) and **reappears if votes recover**
+  (reversible). **Not a hard delete.**
+**Relationship to existing entries:** extends **Tagging #3** and its **tag-moderation** strand;
+interacts with **Tag blacklist #18** (a hidden tag shouldn't trip a blacklist) and with **story
+top-K inheritance** (rank by vote score, not just frequency).
+**Open questions:**
+- Threshold N + anti-brigading (rate-limit, weight by account age?); auto-hide per-chapter-tag
+  or per story-level tag?
+- One vote per user per (chapter-)tag; can a vote be changed/retracted?
+- Does vote score feed **story inherited tags** ranking (top-K by score vs. by count)?
+- Does auto-hide retire manual tag reports, or do both coexist?
+**Sketch / notes:** `ChapterTagVote(chapterTagId, userId, value ∈ {+1,−1})` with `@@unique`;
+denormalized score on `ChapterTag` for cheap ordering + threshold checks; hidden when
+`score < −N`.
+
+## Bulk-add tags when editing  — _status: refining_  (2026-06-21 batch)
+**The idea:** "When editing a chapter writers should be able to bulk-add tags."
+**Why / value:** adding tags one-at-a-time is tedious; let writers add several at once while
+editing.
+**Relationship to existing entries:** a UX enhancement on **Tagging #3** (the model + crowd
+add/remove already shipped: `chapter-tags.tsx`, `tag-actions.ts`, `src/lib/tags.ts`).
+**Open questions:** input shape — comma/space-separated entry, multi-select from the official
+vocabulary, or both? respect the per-chapter "who can tag" permission? cap per chapter; how
+unknown/custom tags get created in bulk (auto-create vs. confirm); dedup + normalization on
+batch entry.
+**Sketch / notes:** extend the tag editor with a batch add action — one transaction, skip
+dupes, validate each name.
+
+## Visual density pass (compact the UI)  — _status: refining_  (2026-06-21 batch)
+**The idea:** "We also need to do a visual pass to compact the visuals on the site a bit —
+some things are a bit too spread out/enlarged."
+**Why / value:** tighter, more scannable layout; less scrolling; serves the "calm and
+scannable" UI principle.
+**Decided (2026-06-21):**
+- **Do it as a density-token system, not an ad-hoc sweep:** introduce shared spacing/size
+  tokens (a tightened `--space-*` / font scale) and apply them repo-wide, so density stays
+  consistent and future UI inherits it. Bigger first pass, durable convention.
+**Relationship to existing entries:** cross-cutting like **symbols-over-words (#16)**; the
+**reader drawer's** font / text-size / color-scheme prefs should ride the *same* token system
+(text-size pref = scaling a `--font-*` token).
+**Open questions:** audit first — which surfaces are worst (feed cards, choice cards, reader,
+profile)? define the scale (and does the user text-size pref multiply it?); a11y floors
+(min tap target / font size) the compaction must not cross.
+**Sketch / notes:** establish tokens in global CSS, migrate component modules surface-by-
+surface; pairs naturally with the drawer's typography prefs.
