@@ -5,6 +5,7 @@ test('a published chapter surfaces in the feed and choices show like counts', as
   const storyTitle = `Feed Story ${stamp}`;
   const rootTitle = `Root ${stamp}`;
   const childTitle = `Choice ${stamp}`;
+  const grandchildTitle = `Branch ${stamp}`;
 
   // Sign up (writing is auth-gated).
   await page.goto('/auth/sign-up');
@@ -31,13 +32,29 @@ test('a published chapter surfaces in the feed and choices show like counts', as
 
   // Publishing lands the author on the new child chapter (not the parent).
   await expect(page.getByRole('heading', { name: childTitle })).toBeVisible();
+  const childUrl = page.url();
 
-  // Back on the root reader: the choice shows with its (zero) like count.
+  // Add a grandchild under the child, so the root's choice has a real descendant.
+  await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.getByLabel('Chapter title').fill(grandchildTitle);
+  await page.getByLabel('Chapter content').fill('A deeper branch.');
+  await page.getByRole('button', { name: 'Publish chapter' }).click();
+  await expect(page.getByRole('heading', { name: grandchildTitle })).toBeVisible();
+
+  // Revisiting the child chapter records a view, so its view count ticks up.
+  await page.goto(childUrl);
+  await expect(page.getByRole('heading', { name: childTitle })).toBeVisible();
+
+  // Back on the root reader: the choice shows its like count plus the new
+  // view and descendant signals.
   await page.goto(rootUrl);
   await expect(page.getByRole('heading', { name: rootTitle })).toBeVisible();
   const choices = page.getByRole('region', { name: 'Choices' });
+  const childChoice = choices.getByRole('link', { name: childTitle }).locator('xpath=ancestor::li[1]');
   await expect(choices.getByRole('link', { name: childTitle })).toBeVisible();
-  await expect(choices.getByLabel('0 likes')).toBeVisible();
+  await expect(childChoice.getByLabel('0 likes')).toBeVisible();
+  await expect(childChoice.getByLabel(/views/)).toBeVisible();
+  await expect(childChoice.getByLabel(/continuation/)).toBeVisible();
 
   // The homepage feed surfaces the freshly published chapter.
   await page.goto('/');

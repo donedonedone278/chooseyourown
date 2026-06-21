@@ -115,6 +115,13 @@
   cursor: pointer;
 }
 
+.choiceBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 /* Hover effects only where there's a real pointer. On touch (iOS Safari) `:hover`
    "sticks" to the tapped card, so the option you just chose keeps looking lifted
    and highlighted until you tap elsewhere. */
@@ -163,9 +170,37 @@
   inset: 0;
 }
 
-.choiceLikes {
+.choiceTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.choiceTagChip {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--surface-muted, #f0f0f0);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.choiceTagOverflow {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.choiceStats {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-sans);
   font-size: 0.85rem;
   color: var(--text-muted);

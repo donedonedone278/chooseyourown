@@ -2,14 +2,14 @@ import Link from 'next/link';
 
 import { likeChapterAction } from '@/actions/chapter-actions';
 import { ChapterTags, type ChapterTagView } from '@/components/chapters/chapter-tags';
-import { ChoiceList } from '@/components/chapters/choice-list';
+import { ChoiceList, type ChoiceItem } from '@/components/chapters/choice-list';
 import { MarkdownContent } from '@/components/chapters/markdown-content';
 import { MarkChapterRead } from '@/components/chapters/read-marker';
 import { ReportChapter } from '@/components/chapters/report-chapter';
 import { Stat } from '@/components/ui/stat';
 import styles from './chapter-reader.module.css';
 
-type Choice = { id: string; title: string; likeCount: number; read: boolean };
+type Choice = ChoiceItem;
 
 export function ChapterReader({
   storyId,

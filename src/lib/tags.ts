@@ -126,19 +126,80 @@ export async function removeTagFromChapter(input: {
   });
 }
 
+export type ChapterTagView = {
+  chapterTagId: string;
+  tagId: string;
+  name: string;
+  isOfficial: boolean;
+  icon: string | null;
+};
+
+/** Official tags first, then alphabetical — shared ordering for chapter tag lists. */
+function sortChapterTags(tags: ChapterTagView[]): ChapterTagView[] {
+  return [...tags].sort((a, b) => {
+    if (a.isOfficial !== b.isOfficial) return a.isOfficial ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 /** Tags for a chapter: official first, then alphabetical. */
-export async function getChapterTags(chapterId: string) {
+export async function getChapterTags(chapterId: string): Promise<ChapterTagView[]> {
   const chapterTags = await db.chapterTag.findMany({
     where: { chapterId },
     include: { tag: true }
   });
 
-  return chapterTags
-    .map((ct) => ({ chapterTagId: ct.id, tagId: ct.tag.id, name: ct.tag.name, isOfficial: ct.tag.isOfficial, icon: ct.tag.icon }))
-    .sort((a, b) => {
-      if (a.isOfficial !== b.isOfficial) return a.isOfficial ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+  return sortChapterTags(
+    chapterTags.map((ct) => ({
+      chapterTagId: ct.id,
+      tagId: ct.tag.id,
+      name: ct.tag.name,
+      isOfficial: ct.tag.isOfficial,
+      icon: ct.tag.icon
+    }))
+  );
+}
+
+/**
+ * Batched sibling of `getChapterTags` for a list of chapter ids — avoids an N+1
+ * over choices. Every requested id is present in the result (an empty array when
+ * untagged); each list is ordered official-first then alphabetical.
+ */
+export async function getChaptersTags(chapterIds: string[]): Promise<Map<string, ChapterTagView[]>> {
+  const tagsByChapter = new Map<string, ChapterTagView[]>();
+  if (chapterIds.length === 0) return tagsByChapter;
+
+  for (const id of chapterIds) {
+    tagsByChapter.set(id, []);
+  }
+
+  const chapterTags = await db.chapterTag.findMany({
+    where: { chapterId: { in: chapterIds } },
+    include: { tag: true }
+  });
+
+  const grouped = new Map<string, ChapterTagView[]>();
+  for (const ct of chapterTags) {
+    const view: ChapterTagView = {
+      chapterTagId: ct.id,
+      tagId: ct.tag.id,
+      name: ct.tag.name,
+      isOfficial: ct.tag.isOfficial,
+      icon: ct.tag.icon
+    };
+    const list = grouped.get(ct.chapterId);
+    if (list) {
+      list.push(view);
+    } else {
+      grouped.set(ct.chapterId, [view]);
+    }
+  }
+
+  for (const [chapterId, views] of grouped) {
+    tagsByChapter.set(chapterId, sortChapterTags(views));
+  }
+
+  return tagsByChapter;
 }
 
 /**
