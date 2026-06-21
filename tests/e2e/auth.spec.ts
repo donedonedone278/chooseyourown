@@ -16,6 +16,25 @@ test('a new user can create an account and sees signed-in navigation', async ({ 
   await expect(page.locator('header').getByRole('link', { name: 'Sign in' })).toHaveCount(0);
 });
 
+test('a signed-in user can log out', async ({ page }) => {
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const email = `riley-${stamp}@example.com`;
+
+  await page.goto('/auth/sign-up');
+  await page.getByLabel('Display name').fill('Riley');
+  await page.getByLabel('Handle').fill(`riley-${Math.random().toString(36).slice(2, 8)}`);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill('password123');
+  await page.getByRole('button', { name: 'Create account' }).click();
+
+  await expect(page.getByText('Signed in as Riley')).toBeVisible();
+
+  await page.locator('header').getByRole('button', { name: 'Log out' }).click();
+
+  await expect(page.locator('header').getByRole('link', { name: 'Sign in' })).toBeVisible();
+  await expect(page.locator('header').getByText('Signed in as')).toHaveCount(0);
+});
+
 test('signing in with an account that does not exist shows an error instead of crashing', async ({
   page
 }) => {
