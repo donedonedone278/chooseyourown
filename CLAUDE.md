@@ -183,7 +183,7 @@ LAN access. Don't put multi-step `&&` command chains in docs — add a script un
 - `chapters.ts` — invariant-enforcing creators (`createStoryWithRootChapter` runs in a `$transaction`; `createChildChapter` validates parent belongs to the story and isn't deleted).
 - `stories.ts` — story/feed queries.
 
-**Ordering rule:** child-chapter choices render in creation order (`createdAt ASC`) so the UI stays stable as like counts change. Don't sort choices by likes.
+**Ordering rule:** in the option select, **realized (already-written) choices always list before unclaimed suggested prompts**; within each group, order is creation order (`createdAt ASC`) so the UI stays stable as like counts change. Don't sort choices by likes. This is enforced centrally in `getChapterWithChoices` (`src/lib/chapters.ts`).
 
 ## UI principles
 

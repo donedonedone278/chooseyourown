@@ -37,6 +37,46 @@ const DEMO_AUTHORS: { email: string; displayName: string }[] = [
   { email: 'theo@example.com', displayName: 'Theo Vance' }
 ];
 
+// A pool of demo "reader" accounts. Likes are one-per-user and views are
+// one-per-unique-viewer, so believable counts need real distinct users, not
+// just the two authors. (All use password123, like every demo account.)
+const DEMO_READERS = [
+  'Ines Marlow',
+  'Bram Foss',
+  'Cora Devlin',
+  'Otis Vane',
+  'Pell Sandoval',
+  'Wren Achebe',
+  'Dax Romero',
+  'Liora Quint',
+  'Hale Sutter',
+  'Nim Okafor',
+  'Saskia Bell',
+  'Eli Drummond'
+];
+
+// Deterministic PRNG (mulberry32) so seeded engagement varies chapter-to-chapter
+// but is identical on every `db:reset` — a stable demo, not a flickering one.
+function makeRng(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a += 0x6d2b79f5;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// A random subset of `items` of size `n` (deterministic given `rng`).
+function pickSome<T>(items: T[], n: number, rng: () => number): T[] {
+  const pool = [...items];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.max(0, Math.min(n, pool.length)));
+}
+
 const DEMO_STORIES: DemoStory[] = [
   {
     title: 'The Lighthouse at Dunmore',
@@ -217,7 +257,38 @@ const DEMO_STORIES: DemoStory[] = [
   }
 ];
 
-async function seedDemoStory(authorId: string, story: DemoStory) {
+/**
+ * Give a chapter a believable spread of likes + unique views, recorded the way
+ * the app records them: likes are one row per distinct reader; views are unique
+ * `ChapterView` rows (some tied to those readers so read-state demos too, the
+ * rest anonymous devices) with `Chapter.viewCount` denormalized to match. Views
+ * always exceed likes, as in real traffic.
+ */
+async function seedEngagement(chapterId: string, readerIds: string[], rng: () => number) {
+  const likers = pickSome(readerIds, Math.floor(rng() * (readerIds.length + 1)), rng);
+  for (const userId of likers) {
+    await db.chapterLike.create({ data: { chapterId, userId } });
+  }
+
+  const viewTotal = likers.length + 3 + Math.floor(rng() * 30);
+  const viewers = pickSome(readerIds, Math.min(readerIds.length, viewTotal), rng);
+  for (const userId of viewers) {
+    await db.chapterView.create({
+      data: { chapterId, viewerKey: `seed-u:${chapterId}:${userId}`, userId }
+    });
+  }
+  for (let i = viewers.length; i < viewTotal; i++) {
+    await db.chapterView.create({ data: { chapterId, viewerKey: `seed-d:${chapterId}:${i}` } });
+  }
+  await db.chapter.update({ where: { id: chapterId }, data: { viewCount: viewTotal } });
+}
+
+async function seedDemoStory(
+  authorId: string,
+  story: DemoStory,
+  readerIds: string[],
+  rng: () => number
+) {
   const existing = await db.story.findFirst({ where: { title: story.title } });
   if (existing) return; // idempotent: don't duplicate on a re-run
 
@@ -248,11 +319,13 @@ async function seedDemoStory(authorId: string, story: DemoStory) {
         content: node.content
       });
       await addPrompts(child.id, node.prompts);
+      await seedEngagement(child.id, readerIds, rng);
       await addChildren(child.id, node.children);
     }
   }
 
   await addPrompts(created.rootChapterId, story.root.prompts);
+  await seedEngagement(created.rootChapterId, readerIds, rng);
   await addChildren(created.rootChapterId, story.root.children);
 }
 
@@ -294,9 +367,50 @@ async function main() {
     authorIds.set(author.email, user.id);
   }
 
+  const rng = makeRng(0x5eed);
+
+  const readerIds: string[] = [];
+  for (const name of DEMO_READERS) {
+    const handle = slugifyHandle(name);
+    const reader = await db.user.upsert({
+      where: { email: `${handle}@example.com` },
+      update: {},
+      create: {
+        email: `${handle}@example.com`,
+        username: handle,
+        displayName: name,
+        passwordHash
+      }
+    });
+    readerIds.push(reader.id);
+  }
+
   for (const story of DEMO_STORIES) {
     const authorId = authorIds.get(story.authorEmail);
-    if (authorId) await seedDemoStory(authorId, story);
+    if (authorId) await seedDemoStory(authorId, story, readerIds, rng);
+  }
+
+  // Profile views for the two authors (the profile "views" stat reads
+  // User.profileViewCount). Idempotent: skip an author who already has them.
+  for (const authorId of authorIds.values()) {
+    if ((await db.profileView.count({ where: { profileUserId: authorId } })) > 0) continue;
+
+    const viewers = pickSome(readerIds, 8 + Math.floor(rng() * (readerIds.length - 7)), rng);
+    for (const viewerId of viewers) {
+      await db.profileView.create({
+        data: { profileUserId: authorId, viewerKey: `seed-u:${viewerId}`, userId: viewerId }
+      });
+    }
+    const anon = Math.floor(rng() * 25);
+    for (let i = 0; i < anon; i++) {
+      await db.profileView.create({
+        data: { profileUserId: authorId, viewerKey: `seed-d:${authorId}:${i}` }
+      });
+    }
+    await db.user.update({
+      where: { id: authorId },
+      data: { profileViewCount: viewers.length + anon }
+    });
   }
 }
 

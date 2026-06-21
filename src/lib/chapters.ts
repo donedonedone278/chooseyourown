@@ -161,10 +161,11 @@ export async function deleteSuggestedPrompt(input: { optionId: string; userId: s
 
 /**
  * Load a chapter (if not soft-deleted) with its story and its outgoing
- * options (the choice list). Options render in creation order so the UI is
- * stable as likes change. A realized option whose child was soft-deleted is
- * dropped here (the caller never has to special-case it); an unclaimed
- * suggested prompt has no child and is always kept.
+ * options (the choice list). Realized (already-written) options always list
+ * before unclaimed suggested prompts; within each group order is creation
+ * order (createdAt ASC) so the UI is stable as likes change. A realized option
+ * whose child was soft-deleted is dropped here (the caller never has to
+ * special-case it); an unclaimed suggested prompt has no child and is always kept.
  */
 export async function getChapterWithChoices(chapterId: string) {
   const chapter = await db.chapter.findFirst({
@@ -194,9 +195,12 @@ export async function getChapterWithChoices(chapterId: string) {
 
   return {
     ...chapter,
-    optionsFromHere: chapter.optionsFromHere.filter(
-      (option) => !option.childChapter || option.childChapter.deletedAt === null
-    )
+    optionsFromHere: chapter.optionsFromHere
+      .filter((option) => !option.childChapter || option.childChapter.deletedAt === null)
+      // Realized (already-written) choices always come before unclaimed
+      // suggested prompts. Array.sort is stable, so the createdAt-ASC order from
+      // the query is preserved within each group.
+      .sort((a, b) => Number(Boolean(b.childChapter)) - Number(Boolean(a.childChapter)))
   };
 }
 

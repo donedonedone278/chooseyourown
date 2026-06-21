@@ -126,29 +126,41 @@ describe('ChapterOption (options-as-edges)', () => {
     expect(chaptersByWriterB).toHaveLength(0);
   });
 
-  it('getChapterWithChoices returns realized options and unclaimed prompts in createdAt order', async () => {
+  it('lists realized options before unclaimed prompts, createdAt order within each group', async () => {
     const author = await createUser();
     const story = await createStory({ authorId: author.id });
     const parent = await createChapter({ storyId: story.id, authorId: author.id });
-    const realizedChild = await createChapter({
+
+    // Interleave creation so the rule can't be satisfied by createdAt alone:
+    // promptA is created FIRST, yet must still sort after both realized options.
+    await addSuggestedPrompt({ parentChapterId: parent.id, authorId: author.id, label: 'Prompt A' });
+    const realized1 = await createChapter({
       storyId: story.id,
       authorId: author.id,
       parentChapterId: parent.id,
-      label: 'Go north'
+      label: 'Realized 1'
     });
-    const prompt = await addSuggestedPrompt({
-      parentChapterId: parent.id,
+    await addSuggestedPrompt({ parentChapterId: parent.id, authorId: author.id, label: 'Prompt B' });
+    const realized2 = await createChapter({
+      storyId: story.id,
       authorId: author.id,
-      label: 'Go south'
+      parentChapterId: parent.id,
+      label: 'Realized 2'
     });
 
     const loaded = await getChapterWithChoices(parent.id);
 
-    expect(loaded?.optionsFromHere.map((o) => o.label)).toEqual(['Go north', 'Go south']);
-    const realizedOption = loaded?.optionsFromHere.find((o) => o.childChapterId === realizedChild.id);
-    expect(realizedOption?.childChapter?.id).toBe(realizedChild.id);
-    const promptOption = loaded?.optionsFromHere.find((o) => o.id === prompt.id);
-    expect(promptOption?.childChapter).toBeNull();
+    expect(loaded?.optionsFromHere.map((o) => o.label)).toEqual([
+      'Realized 1',
+      'Realized 2',
+      'Prompt A',
+      'Prompt B'
+    ]);
+    // Realized options carry their child; prompts don't.
+    expect(loaded?.optionsFromHere[0]?.childChapter?.id).toBe(realized1.id);
+    expect(loaded?.optionsFromHere[1]?.childChapter?.id).toBe(realized2.id);
+    expect(loaded?.optionsFromHere[2]?.childChapter).toBeNull();
+    expect(loaded?.optionsFromHere[3]?.childChapter).toBeNull();
   });
 
   it('drops a realized option whose child has been soft-deleted, but keeps unclaimed prompts', async () => {
