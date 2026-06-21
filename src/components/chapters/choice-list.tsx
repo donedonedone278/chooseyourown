@@ -114,6 +114,22 @@ export function ChoiceList({
           </li>
         );
       })}
+
+      {/* Always-present open-branch affordance: write a brand-new choice of your
+          own (vs. the author's pre-labelled prompt cards above). Links to /new
+          with no ?option, so the label is yours to write. */}
+      <li className={`${styles.choiceCard} ${styles.prompt} ${styles.createOption}`} data-kind="create">
+        <div className={styles.choiceBody}>
+          <Link
+            href={`/stories/${storyId}/chapters/${chapterId}/new`}
+            className={styles.choiceTitle}
+            aria-label="Create your own option"
+          >
+            <span aria-hidden="true">+ </span>
+            create your own option…
+          </Link>
+        </div>
+      </li>
     </ul>
   );
 }

@@ -218,12 +218,11 @@
   flex-shrink: 0;
 }
 
-.empty {
-  color: var(--text-muted);
-}
-
-.addChapter {
-  align-self: flex-start;
+/* The trailing "create your own option…" card. Shares the muted/dashed prompt
+   look, but its title takes the accent so it reads as the do-something action
+   rather than one of the author's suggestions. */
+.createOption .choiceTitle {
+  color: var(--accent);
 }
 
 .promptManageList {

@@ -91,7 +91,7 @@ test('open-branch: a writer sets a label distinct from the chapter title', async
   await expect(page.getByRole('heading', { name: rootTitle })).toBeVisible();
   const rootUrl = page.url();
 
-  await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.locator('main').getByRole('link', { name: 'Create your own option' }).click();
   await page.getByLabel('Choice label').fill(label);
   await page.getByLabel('Chapter title').fill(title);
   await page.getByLabel('Chapter content').fill('You climb up.');

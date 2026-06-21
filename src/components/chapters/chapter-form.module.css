@@ -15,6 +15,27 @@
   align-self: flex-start;
 }
 
+/* A choice label that's fixed (claiming an author-suggested prompt): it reads as
+   non-editable rather than looking like an empty editable field. */
+.lockedField {
+  display: flex;
+  flex-direction: column;
+}
+
+.lockedInput {
+  background: var(--surface-muted, #f0f0f0);
+  color: var(--text-muted);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.lockNote {
+  margin-top: 0.35rem;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 /* Auth pages reuse this card for a centered, narrow presentation */
 .authCard {
   max-width: 28rem;

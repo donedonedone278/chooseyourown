@@ -100,11 +100,9 @@ export function ChapterReader({
 
         <section aria-label="Choices" className={styles.choices}>
           <h2>Choices</h2>
-          {choices.length === 0 ? (
-            <p className={styles.empty}>No choices yet — be the first to continue this story.</p>
-          ) : (
-            <ChoiceList storyId={storyId} chapterId={chapterId} choices={choices} userId={userId} />
-          )}
+          {/* ChoiceList always renders — even with no realized/prompt choices it
+              shows the trailing "create your own option…" card to continue here. */}
+          <ChoiceList storyId={storyId} chapterId={chapterId} choices={choices} userId={userId} />
           {isAuthor ? (
             <ul className={styles.promptManageList}>
               {choices
@@ -123,9 +121,6 @@ export function ChapterReader({
                 ))}
             </ul>
           ) : null}
-          <Link href={`/stories/${storyId}/chapters/${chapterId}/new`} className={`btn btn--secondary ${styles.addChapter}`}>
-            Add a chapter
-          </Link>
           {isAuthor ? (
             <form
               action={addSuggestedPromptAction.bind(null, storyId, chapterId)}

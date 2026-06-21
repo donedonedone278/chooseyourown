@@ -1,10 +1,12 @@
 import { Prisma } from '@prisma/client';
 
 import { db } from '@/lib/db';
+import { MAX_OPTION_LABEL } from '@/lib/chapter-constants';
 
-/** Shared cap for a choice label (`ChapterOption.label`), enforced by the
- * domain helpers below and the server action that wraps them. */
-export const MAX_OPTION_LABEL = 120;
+/** Shared cap for a choice label (`ChapterOption.label`), enforced by the domain
+ * helpers below and the server action that wraps them. Defined in the client-safe
+ * `chapter-constants` module; re-exported here so existing import sites keep working. */
+export { MAX_OPTION_LABEL };
 
 function validateLabel(rawLabel: string): string {
   const label = rawLabel.trim();

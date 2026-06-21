@@ -36,7 +36,7 @@ test('signed-in user starts a story and adds a child chapter', async ({ page }) 
   await expect(page.locator('main').locator('strong')).toHaveText('The bell rings at midnight.');
 
   // Add a child chapter under it.
-  await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.locator('main').getByRole('link', { name: 'Create your own option' }).click();
   await page.getByLabel('Choice label').fill('Climb the stairs');
   await page.getByLabel('Chapter title').fill('Climb the stairs');
 

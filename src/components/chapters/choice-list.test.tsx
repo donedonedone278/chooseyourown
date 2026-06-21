@@ -147,4 +147,21 @@ describe('ChoiceList', () => {
     expect(screen.getByLabelText(/2 likes/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Unwritten/i })).toBeInTheDocument();
   });
+
+  it('always renders a trailing open-branch "create your own option" card (open /new, no ?option)', () => {
+    render(<ChoiceList storyId="story-1" chapterId="chapter-1" choices={[makeRealizedChoice()]} />);
+
+    const create = screen.getByRole('link', { name: 'Create your own option' });
+    expect(create).toHaveAttribute('href', '/stories/story-1/chapters/chapter-1/new');
+    expect(create.closest('li')).toHaveAttribute('data-kind', 'create');
+  });
+
+  it('shows the create-your-own card even when there are no other choices', () => {
+    render(<ChoiceList storyId="story-1" chapterId="chapter-1" choices={[]} />);
+
+    expect(screen.getByRole('link', { name: 'Create your own option' })).toHaveAttribute(
+      'href',
+      '/stories/story-1/chapters/chapter-1/new'
+    );
+  });
 });
