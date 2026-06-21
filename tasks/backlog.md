@@ -426,7 +426,7 @@ them as one thread, not three.
 FTS5 index (#11), and the tag join (#3). Windowed popularity = hot-score over rows within
 `[now − window, now]`.
 
-## Logout control  — _status: ready_  (2026-06-21 batch)
+## Logout control  — _status: done (2026-06-21)_  (2026-06-21 batch)
 **The idea:** 'A "logout" button.'
 **Why / value:** **this is a gap today, not future work** — `signOut` is wired in
 `src/lib/auth.ts` but **no UI ever calls it**, so a signed-in user currently cannot log out.

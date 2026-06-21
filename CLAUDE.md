@@ -95,6 +95,10 @@ invisible to the other person.
      both ends — `git push origin --delete <branch>` and `git branch -d <branch>` — so it
      stops reading as "in progress" in the claims list. A merged branch left on the remote is
      a stale claim that makes the next picker think the ticket is still taken.
+   - **Mark the backlog entry done.** If the work came from a `tasks/backlog.md` entry, flip
+     its `_status: …_` to `_status: done (<YYYY-MM-DD>)_` so it isn't picked up again. This is
+     a standalone doc edit — commit it **directly to `develop`** and push (it rides no feature
+     branch, since the branch is already gone).
 
 **Authorization:** commit freely *on the feature branch* to checkpoint progress without
 asking. **Do not merge into `develop` without explicit user approval.** Always ask before
