@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Load the on-demand TEST data (deep branching stories + short-credential login
-# accounts) into the dev db. Additive and idempotent — it does NOT drop/migrate;
-# run `npm run db:reset` first if you want a clean base.
+# Load the dev data (all five demo stories + author/login/reader accounts) into
+# the dev db. Additive and idempotent — it does NOT drop/migrate; run
+# `npm run db:reset` first if you want a clean base (db:reset runs this for you).
 #
-#   npm run db:seed:test
+#   npm run db:seed:dev
 #
 # Mirrors db-reset.sh's PATH setup, and additionally sources .env so a bare
 # `tsx` run (unlike `prisma db seed`) has DATABASE_URL in its environment.
@@ -25,4 +25,4 @@ set -a
 source .env
 set +a
 
-exec tsx prisma/seed-test-data.ts
+exec tsx prisma/seed-dev.ts

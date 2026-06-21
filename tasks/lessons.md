@@ -207,3 +207,23 @@ that changes what actually ships.
   re-approval. Baked into `CLAUDE.md` → "Branches and workflow," step 5.
 - **Tell:** `tasks/lessons.md` / `tasks/backlog.md` are append-at-bottom, so two branches that
   both append will conflict at the tail — expected, resolve by keeping *both* sides in order.
+
+## The browser suite must not share the dev/preview db (2026-06-21)
+
+**Symptom:** the phone preview showed ~16 "tiny" stories (`Feed Story <digits>`, `Riley
+Story …`, `Editor Story …`) nobody seeded. They were **Playwright artifacts**: the e2e suite
+ran against the shared `dev.db` on :3000 and created stamped rows every `npm test`, which
+accumulated and never cleared. The seed scripts only ever held the big demo stories.
+- **Rule:** a browser/integration suite that mutates a db must run against its **own** db,
+  rebuilt per run — never the dev/preview db. We isolate by **db *and* port**: e2e uses
+  `prisma/e2e.db` on :3100 with `reuseExistingServer: false` (`scripts/test-e2e.sh` +
+  `playwright.config.ts`). Port matters too: with `reuseExistingServer: true` a live
+  `dev:phone` on :3000 would get *reused* as the test server, so tests would hit `dev.db`
+  even with a separate DATABASE_URL. Different port ⇒ no reuse, no clobber.
+- **Tell:** if "phantom" rows appear in a dev db that a clean `db:reset` removes but that come
+  back after running tests, suspect the test suite sharing that db — fix the isolation, don't
+  just keep resetting.
+- **Also:** keep "set up the db" (schema/reference data) and "populate dev data"
+  (users/stories) in **separate seed scripts** — `prisma/seed.ts` (setup: official tags only)
+  vs `prisma/seed-dev.ts` (all content). `db:reset` runs both; the split keeps each step's
+  job obvious and lets the e2e db build reuse the exact same data.

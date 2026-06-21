@@ -12,7 +12,7 @@ export default defineConfig({
   // that test — see tasks/backlog or a dedicated follow-up.
   retries: 1,
   use: {
-    baseURL: 'http://127.0.0.1:3000'
+    baseURL: 'http://127.0.0.1:3100'
   },
   projects: [
     {
@@ -20,10 +20,17 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] }
     }
   ],
+  // The browser suite runs on its OWN port + db so it never touches the dev/preview
+  // server (:3000 / dev.db). scripts/test-e2e.sh rebuilds prisma/e2e.db before
+  // launching; we pin DATABASE_URL here too so the dev server this starts binds the
+  // isolated db regardless of how it was invoked. reuseExistingServer is off: each
+  // run gets a fresh server on the freshly-built e2e.db, and a running dev:phone on
+  // :3000 is never reused or clobbered.
   webServer: {
-    command: 'npm run dev -- --hostname 127.0.0.1',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: true,
-    timeout: 120000
+    command: 'npm run dev -- --hostname 127.0.0.1 --port 3100',
+    url: 'http://127.0.0.1:3100',
+    reuseExistingServer: false,
+    timeout: 120000,
+    env: { DATABASE_URL: 'file:./e2e.db' }
   }
 });
