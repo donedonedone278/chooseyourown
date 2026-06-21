@@ -56,6 +56,19 @@ invisible to the other person.
    green. **Never use git worktrees / `isolation: worktree` for this** — implement on the
    normal feature branch in the main working tree (the subagent shares it). Worktrees lack
    `node_modules`, fork the checkout in confusing ways, and aren't how we work here.
+   - **Update the dev seed to demo the feature.** Part of *every* feature is explicitly
+     deciding whether the demo seed should show it — and for anything user-visible the answer
+     is almost always **yes**. When yes, update **the committed seed script itself**
+     (`prisma/seed.ts`, the data the phone preview is built from via `npm run db:reset`) —
+     **never** hand-insert rows into the db, run a throwaway script, or tweak it as a one-off.
+     The phone preview and the next contributor's `db:reset` only ever see what the seed
+     creates, so anything not in the seed effectively does not exist. Seed it **thoroughly**,
+     not with one token example: the feature should appear across *many* chapters/stories and
+     in *every meaningful state* (e.g. a new edge/option/flag shown on lots of nodes, at
+     varying depths, in each on/off or claimed/unclaimed variant) so it can actually be
+     exercised the moment the preview comes up. A new field that distinguishes two things
+     (e.g. a choice label vs. a chapter title) must be seeded with the two values *different*
+     on a representative spread, or the seed silently fails to demo the very thing it adds.
 4. **Get the user's approval** of the result. ("The user" = whichever contributor owns the
    branch; you approve and merge your own work — there's no cross-review gate.)
 5. **Reset `tasks/todo.md` on the branch, then sync + merge + push:**
