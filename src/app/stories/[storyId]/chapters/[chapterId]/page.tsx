@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import { recordViewAction } from '@/actions/view-actions';
 import { ChapterReader } from '@/components/chapters/chapter-reader';
 import { auth } from '@/lib/auth';
-import { getChapterWithChoices, hasUserLikedChapter } from '@/lib/chapters';
-import { getChapterTags } from '@/lib/tags';
+import { getChapterWithChoices, getDescendantCounts, hasUserLikedChapter } from '@/lib/chapters';
+import { getChapterTags, getChaptersTags } from '@/lib/tags';
 import { getReadChapterIds } from '@/lib/views';
 
 export default async function ChapterPage({
@@ -31,6 +31,8 @@ export default async function ChapterPage({
 
   const choiceIds = chapter.childChapters.map((choice) => choice.id);
   const readChoiceIds = userId ? await getReadChapterIds(userId, choiceIds) : new Set<string>();
+  const descendantCounts = await getDescendantCounts(choiceIds);
+  const choiceTags = await getChaptersTags(choiceIds);
 
   const canAddTags = Boolean(
     userId && (chapter.story.tagPermission === 'crowd' || chapter.authorId === userId)
@@ -50,7 +52,10 @@ export default async function ChapterPage({
         id: choice.id,
         title: choice.title,
         likeCount: choice._count.likes,
-        read: readChoiceIds.has(choice.id)
+        viewCount: choice.viewCount,
+        descendantCount: descendantCounts.get(choice.id) ?? 0,
+        read: readChoiceIds.has(choice.id),
+        tags: choiceTags.get(choice.id) ?? []
       }))}
       likeCount={chapter._count.likes}
       viewCount={viewCount}

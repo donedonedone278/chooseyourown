@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { db } from '@/lib/db';
 import {
   addTagToChapter,
+  getChaptersTags,
   getStoryTopTags,
   normalizeTagName,
   removeTagFromChapter
@@ -209,6 +210,53 @@ describe('getStoryTopTags', () => {
     const topTags = await getStoryTopTags(story.id, 2);
     expect(topTags).toHaveLength(2);
     expect(topTags.map((t) => t.name)).toEqual(['alpha', 'beta']);
+  });
+});
+
+describe('getChaptersTags', () => {
+  it('returns a batched, official-first then alphabetical grouping per chapter id', async () => {
+    const author = await createUser();
+    const story = await createStory({ authorId: author.id, tagPermission: 'crowd' });
+    const chapterA = await createChapter({ storyId: story.id, authorId: author.id });
+    const chapterB = await createChapter({ storyId: story.id, authorId: author.id });
+
+    const officialTag = await db.tag.upsert({
+      where: { name: 'official_horror' },
+      update: {},
+      create: { name: 'official_horror', isOfficial: true, icon: 'Skull' }
+    });
+    await db.chapterTag.create({
+      data: { chapterId: chapterA.id, tagId: officialTag.id, addedByUserId: author.id }
+    });
+    await addTagToChapter({ chapterId: chapterA.id, name: 'zeta_custom', userId: author.id });
+    await addTagToChapter({ chapterId: chapterA.id, name: 'alpha_custom', userId: author.id });
+    await addTagToChapter({ chapterId: chapterB.id, name: 'romance', userId: author.id });
+
+    const tagsByChapter = await getChaptersTags([chapterA.id, chapterB.id]);
+
+    expect(tagsByChapter.get(chapterA.id)?.map((t) => t.name)).toEqual([
+      'official_horror',
+      'alpha_custom',
+      'zeta_custom'
+    ]);
+    expect(tagsByChapter.get(chapterA.id)?.[0].isOfficial).toBe(true);
+    expect(tagsByChapter.get(chapterB.id)?.map((t) => t.name)).toEqual(['romance']);
+  });
+
+  it('includes an untagged chapter id as an empty array', async () => {
+    const author = await createUser();
+    const story = await createStory({ authorId: author.id, tagPermission: 'crowd' });
+    const chapter = await createChapter({ storyId: story.id, authorId: author.id });
+
+    const tagsByChapter = await getChaptersTags([chapter.id]);
+
+    expect(tagsByChapter.get(chapter.id)).toEqual([]);
+  });
+
+  it('returns an empty Map for empty input', async () => {
+    const tagsByChapter = await getChaptersTags([]);
+
+    expect(tagsByChapter.size).toBe(0);
   });
 });
 

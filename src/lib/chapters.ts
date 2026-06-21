@@ -80,6 +80,43 @@ export async function getChapterWithChoices(chapterId: string) {
   });
 }
 
+/**
+ * Descendant counts (whole subtree, excluding the seed itself) for a batch of
+ * chapter ids, via one recursive CTE walking `parentChapterId` and filtering
+ * out soft-deleted rows. Every requested id is present in the result, defaulting
+ * to 0 when it has no (non-deleted) descendants.
+ */
+export async function getDescendantCounts(chapterIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (chapterIds.length === 0) return counts;
+
+  for (const id of chapterIds) {
+    counts.set(id, 0);
+  }
+
+  const ids = Prisma.join(chapterIds);
+
+  const rows = await db.$queryRaw<{ rootId: string; count: bigint }[]>(Prisma.sql`
+    WITH RECURSIVE descendants("rootId", "id") AS (
+      SELECT "id" AS "rootId", "id" FROM "Chapter" WHERE "id" IN (${ids})
+      UNION ALL
+      SELECT descendants."rootId", "Chapter"."id"
+      FROM "Chapter"
+      JOIN descendants ON "Chapter"."parentChapterId" = descendants."id"
+      WHERE "Chapter"."deletedAt" IS NULL
+    )
+    SELECT "rootId", COUNT(*) - 1 AS "count"
+    FROM descendants
+    GROUP BY "rootId"
+  `);
+
+  for (const row of rows) {
+    counts.set(row.rootId, Number(row.count));
+  }
+
+  return counts;
+}
+
 export async function likeChapter(input: { chapterId: string; userId: string }) {
   try {
     return await db.chapterLike.create({ data: input });
