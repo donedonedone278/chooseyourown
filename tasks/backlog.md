@@ -15,6 +15,10 @@ feature branch and its execution plan goes in that branch's `tasks/todo.md`
   Clarifying questions and answers accumulate under **Open questions**.
 - When an idea graduates to a branch, mark it `shipped`/`in progress` and link the branch,
   rather than deleting it — the trail is useful.
+- **When an entry is fully done, move it to `tasks/shipped.md`** (not deleted) as part of
+  post-approval cleanup — see `CLAUDE.md` → "Branches and workflow". Keep **partially-shipped**
+  entries here (flip status to `partially shipped`, list what's left); only move them once the
+  remaining work lands too.
 
 ### Per-idea template
 
@@ -35,36 +39,49 @@ a wave** run in parallel — just coordinate so you don't both grab the same fou
 item graduates to its own `feat/<initials>-<name>` branch + `tasks/todo.md` plan when picked
 up. "Quick win" = small, low-merge-conflict, good for warming up the two-person workflow._
 
-**Wave 1 — foundations (most features hang off these; mutually independent → parallelizable):**
-- **Tagging system (3)** — biggest single unblocker: richer choice cards, feed enrichment,
-  search, tag blacklist, story tag inheritance. Bring **tag moderation** along (crowd-tagging
-  is the default → abuse surface).
-- **View + read tracking (2 + 14)** — one per-(viewer, chapter) mechanism (F3). Unblocks the
-  hot-score feed, read/unread marks, profile stats, and view counts on choice cards.
-- **Symbols-over-words infra (16)** — `lucide-react` + a shared `<Stat>` component. Small;
-  every visual feature reuses it, so land the convention early. *(Quick win.)*
+**Progress snapshot (audited 2026-06-21):** Wave 1 and most of Wave 2/3-reader are **shipped** —
+tagging, view+read tracking, symbols-over-words, options-as-edges (label≠title + suggested
+prompts), richer choice cards, back-to-parent, and the basic user profile are all in `develop`.
+What's left clusters in **discovery** (feed/search/browse), **social** (follow, settings,
+blacklist, profile enrichment), and the **heavy revision/collaboration** work — plus standalone
+quick wins (ending chapters, non-tree links, bookmark). Per-entry status below. **Completed
+entries have moved to `tasks/shipped.md`** — the ~~struck-through~~ items below are pointers to
+their trail there; the two `partially shipped` ones stay in this file with their remaining work.
 
-**Wave 2 — core reader/writer flow (coordinate: touches the reader/editor, conflict-prone):**
-- **Options-as-edges (4 + 9)** — split choice *label* from chapter *title*; suggested prompts
-  as unclaimed option slots. Restructures the choice model.
-- **Non-tree connections (7)** — navigation-edge link layer (shares choice rendering with 4).
-- **Terminal/ending chapters (6)** — small; badge + optional branch lock.
-- **Back-to-parent button (13)** — trivial, nearly standalone; drop in any time. *(Quick win.)*
+**Wave 1 — foundations** — ✅ **all shipped:**
+- ~~**Tagging system (3)**~~ — ✅ model + crowd/author permission + official glyphs + story
+  top-K inheritance shipped. *Remaining strand:* tag-abuse **moderation** (report/remove for
+  tags) + per-chapter permission override — see entry.
+- ~~**View + read tracking (2 + 14)**~~ — ✅ shipped (`ChapterView`, unique viewer, read marks
+  in feed + choices, profile stats, view counts on cards).
+- ~~**Symbols-over-words infra (16)**~~ — ✅ shipped (`<Stat>` + icon vocabulary; views &
+  descendants now consumed on choice cards).
+
+**Wave 2 — core reader/writer flow:**
+- ~~**Options-as-edges (4 + 9)**~~ — ✅ shipped (label split from title; suggested prompts as
+  unclaimed option slots). *(The #9 here = author-suggested prompts, not collaboration.)*
+- **Non-tree connections (7)** — ⬜ not started; navigation-edge link layer.
+- **Terminal/ending chapters (6)** — ⬜ not started; badge + optional branch lock.
+- ~~**Back-to-parent button (13)**~~ — ✅ shipped (← Back to parent; root falls back to the
+  cover breadcrumb — see entry for the minor divergence).
 
 **Wave 3 — surfaces that compose the foundations:**
-- **Richer choice cards (5)** — tags + likes + views + descendant count + symbols + label.
-- **Home feed (10)** — hot-score + Newest tab + tag/like icons.
-- **Search (11)** — FTS5 over title/tags/body across stories/chapters/users.
+- ~~**Richer choice cards (5)**~~ — ✅ shipped (label + ♥ likes + 👁 views + ⑂ descendants +
+  tags + read-dimming).
+- **Home feed (10)** — ⬜ still a pure reverse-chron feed (read marks only); no hot-score, no
+  Popular/Newest tabs, no tag/like icons on cards. Folded into **Browse (#20)**.
+- **Search (11)** — ⬜ not started; FTS5. Folded into **Browse (#20)**.
 
-**Wave 4 — social + settings:**
-- **User settings surface (17)** — small; hosts show-likes + blacklist mode.
-- **Tag blacklist (18)** — needs tags (3) + settings (17).
-- **Follow (12)** — follow writers + stories; followed feed.
-- **User profiles (1)** — *basic* version (chapter lists) needs nothing new → early quick win;
-  *full* version (stats, follower counts, liked stories) needs 2, 12, 17.
+**Wave 4 — social + settings (none started):**
+- **User settings surface (17)** — ⬜ hosts show-likes + blacklist mode + reading prefs.
+- **Tag blacklist (18)** — ⬜ needs settings (17).
+- **Follow (12)** — ⬜ follow writers + stories; followed feed.
+- **User profiles (1)** — 🟡 *basic* version (id-routed public page, stats, Newest/Most-liked
+  chapter lists) **shipped**; *enrichment* (bio, follower/following counts, liked-stories list)
+  still needs 12 + 17.
 
-**Wave 5 — the heavy one (split into sub-branches):**
-- **Collaboration / revision history (8)** — revision storage → edit modes
+**Wave 5 — the heavy one (split into sub-branches, not started):**
+- **Collaboration / revision history (8)** — ⬜ revision storage → edit modes
   (wiki/suggest/locked) → suggest+approve flow → history+restore UI. Sequence late, *or* start
   the revision-storage substrate earlier since search reindex + edit history both want it.
 
@@ -75,9 +92,17 @@ it looks. The revision model underpins all collaboration. Profiles ship basic-th
 
 <!-- Splat ideas below this line. -->
 
-## User profiles  — _status: refining_
+## User profiles  — _status: partially shipped (2026-06-21)_
 **The idea:** "I want to have user profiles. There should be the ability to look at a
 user's chapters chronologically and also sorted by number of likes."
+**Shipped (2026-06-21):** public, logged-out-readable profile at `/users/[id]` (routed by
+stable `User.id`, @handle shown for display) — `src/app/users/[id]/page.tsx`,
+`getUserProfileById` (`src/lib/users.ts`). Has the **two chapter lists** (Newest / Most liked
+tabs), **aggregate stats** (chapters, stories started, likes received, profile views — real
+`ProfileView` tracking). **No avatar** (as decided). Author bylines link to profiles across the
+app.
+**Still TODO (enrichment):** **bio**, **follower / following counts** (needs Follow #12),
+and the **liked-stories list** gated by the "show likes" setting (needs User settings #17).
 **Why / value:** _(refine)_
 **Decided (Q9, 2026-06-16):**
 - **Public to everyone**, including logged-out (server-rendered read surface).
@@ -91,23 +116,22 @@ user's chapters chronologically and also sorted by number of likes."
 (`/users/[name]` vs id); is display name unique/stable enough to route on?
 **Sketch / notes:** all derivable from existing data + the new follow/settings tables.
 
-## Chapter view counter  — _status: refining_
-**The idea:** "There should be a view counter for chapters."
-**Why / value:** _(refine)_
-**Decided (F3, 2026-06-16):**
-- A **view = unique viewer**, counting **logged-out readers too** (distinct signed-in users
-  + distinct anonymous devices; anonymous uniqueness is approximate).
-- **Viewed and read are the same event** — opening a chapter both marks it read and records
-  a unique view (see "Read / visited indicators"). One signal drives both.
-**Open questions:** exclude the **author's own** views from their chapter's count? (likely
-yes). How is an anonymous device identified — cookie/localStorage id? Retention of raw
-view rows vs. a denormalized count.
-**Sketch / notes:** unique counting implies per-(viewer, chapter) records, not just an
-integer; viewer = account id when signed in, else a device id.
-
-## Chapter tagging system  — _status: refining_
+## Chapter tagging system  — _status: partially shipped (2026-06-21)_
 **The idea:** "Chapters should have a tagging system." Tags surface in several places —
 see "Richer choice cards", "Home feed enrichment", and "Search".
+**Shipped (2026-06-21):** `Tag` + `ChapterTag` join (`src/lib/tags.ts`, `tag-actions.ts`,
+`chapter-tags.tsx`). **Curated + free-form** (official tags flagged + carry a glyph via the icon
+vocabulary; custom tags are text chips, auto-created on first use). **Crowd-tagging default**
+with a per-**story** `tagPermission` ({crowd, author}). Tag-name **normalization**
+(`lowercase_with_underscores`, 4–30 chars) + autocomplete. **Story inherited tags = top-K by
+count** (`getStoryTopTags`, K=5). Tags render on the reader + choice cards.
+**Still TODO:**
+- **Tag-abuse moderation** — the report/remove flow is still **chapter-only**; extend it to
+  cover tag abuse (the decided "crowd-tagging → abuse surface" strand). *(Tag voting #23 is a
+  related but distinct crowd-moderation lever.)*
+- **Per-chapter permission override** — permission is per-story only today; the decided
+  per-chapter option (ties to collaboration #8) isn't built.
+- Official-tag curation/symbol assignment is seed-driven; no admin UI.
 **Why / value:** _(refine)_
 **Decided (Q4, 2026-06-16):**
 - **Curated + free-form:** a curated/official core vocabulary *plus* writer-invented custom
@@ -129,34 +153,14 @@ at the story level unless it's frequent.
 **Sketch / notes:** likely a `Tag` table + `ChapterTag` join; official tags flagged + carry
 an icon; story tag cloud = aggregate query over its chapters per the inheritance rule.
 
-## Choice label distinct from chapter title  — _status: refining_
-**The idea:** "Chapters should have both a title and separate text when in the option
-select (like '…climb the stairs' could be the option, but after clicking the actual title
-of the chapter might be different)."
-**Why / value:** _(refine)_
-**Decided (F2, 2026-06-16):** the **option label** lives on the parent→child choice edge,
-separate from the child chapter's own **title**. Label text originates **either** from a
-parent-authored suggested prompt the child claimed, **or** from the child author's own
-wording when they open-branch. See "Author-suggested next-chapter prompts" for the slot
-mechanics — these two entries describe one mechanism.
-**Open questions:** char limit on labels; can a label be edited after the child is written?
-**Sketch / notes:** today choices render the child's *title*; this splits "label" (shown in
-the option select) from "title" (shown once you're reading the chapter).
-
-## Richer choice cards (tags + like/view counts + descendant count in the option select)  — _status: refining_
-**The idea:** "Tags on chapters should be visible in the option select when choosing the
-next chapter to go to." + "The number of likes should be visible in the option select
-section along with the tags." + "Another stat of each chapter that should be visible in
-option select is the number of children it has (including nested)."
-**Why / value:** _(refine)_
-**Open questions:** _(pending — "children including nested" = descendant count, a
-recursive/aggregate query; how computed/cached?)_
-**Sketch / notes:** stats shown here should follow the "symbols over words" convention
-(see below). Likely set: ♥ likes · 👁 views · ⑂ descendants · tags.
-
-## Terminal / ending chapters  — _status: refining_
+## Terminal / ending chapters  — _status: refining (not started)_
 **The idea:** "One day I want to have an option for chapters that the writer can designate
 as a terminal point (like an ending)." (Flagged by user as a later/"one day" item.)
+**Audit (2026-06-21):** **not built** — no `isEnding`/`endingEnforced` fields. ⚠️ Note: the story
+cover already shows an **"N endings"** stat, but that's a *derived* count of **leaf chapters**
+(chapters with no children — `getStoryOverview`), **not** the authored ending flag this entry
+describes. Building this means deciding whether that cover stat switches to count authored
+`isEnding` chapters instead of leaves.
 **Why / value:** _(refine)_
 **Decided (Q6, 2026-06-16):**
 - A terminal chapter **always shows an ending badge** (visual marker, regardless).
@@ -215,28 +219,15 @@ Previous iterations of chapters should be kept just in case."
 live `Chapter.content` = latest revision; `EditProposal` for suggest-mode; a contributors
 set per chapter for co-authorship display.
 
-## Author-suggested next-chapter prompts  — _status: refining_
-**The idea:** "A chapter writer can leave some suggested options for next chapters and
-users can click those and write the next chapter."
-**Why / value:** _(refine)_
-**Decided (F2, 2026-06-16):**
-- Suggested prompts are **optional** and **don't fence** extension: a child author may
-  **claim an unclaimed suggested prompt** *or* **add their own new option** (open branching).
-- A claimed suggested prompt → **exactly one chapter** (first writer owns it; slot then
-  closes). Open-branch options are each their own chapter as today.
-- So a parent chapter carries: 0+ *unclaimed* suggested prompts (label only, no chapter
-  yet) + the realized child choices (label + destination chapter).
-**Open questions:** can the parent author cap how many children/total options exist? Can
-they delete/edit an unclaimed prompt? Can the same writer claim multiple prompts on one
-parent? Do unclaimed prompts show to readers (as "be the one to write this") or only to
-would-be writers?
-**Sketch / notes:** data model gains an "option" record on the parent→child edge that may
-exist *before* its destination chapter does (unclaimed prompt = option with null child).
-
-## Home feed enrichment + default to recent-popular  — _status: refining_
+## Home feed enrichment + default to recent-popular  — _status: refining (not started; read-marks shipped)_
 **The idea:** "Tags and likes for chapters should also be able to be visible on the feed on
 the home page." + "The home page feed should show recent popular chapters by default rather
 than just a pure feed."
+**Audit (2026-06-21):** the home page is still a **pure reverse-chron** feed (`listRecentChapters`,
+`recent-chapter-feed.tsx`). What's already there: **read/unread dimming** on feed cards (from the
+Read-indicators work). What's missing (all of this entry's substance): **hot-score** ordering,
+the **Popular / Newest** tabs, and **tags + like counts** on feed cards. Build as part of
+**Browse (#20)**, which absorbs this.
 **Why / value:** _(refine)_
 **Decided (Q7, 2026-06-16):**
 - Default feed = **"hot" score**: a recency-decayed blend of likes + views
@@ -286,35 +277,6 @@ defined (any new chapter anywhere in that story's tree?).
 **Sketch / notes:** polymorphic-ish follow — a `Follow` of {targetType: user|story,
 targetId}. Keep it as the substrate notifications could plug into later.
 
-## Back-to-parent navigation button  — _status: refining_
-**The idea:** "I would like a clear button that takes me back to the parent chapter."
-**Why / value:** _(refine)_
-**Decided (Q12, 2026-06-16):**
-- Targets the **structural parent** (the chapter's one true authored parent), *not* the
-  chapter you arrived from — stable regardless of circle-back links. Clean because F1 keeps
-  parentage single (links never create parents).
-- At a **root chapter**: button goes to the **story cover page** (`/stories/[id]`), reusing
-  the cover surface. ("One level up.")
-- A distinct in-page control, not reliant on browser back.
-**Open questions:** label/icon (per symbols-over-words); does it appear on every chapter or
-only when scrolled? (the header already auto-hides).
-**Sketch / notes:** trivial given single-parent invariant — `parentChapterId` or story cover.
-
-## Read / visited indicators  — _status: refining_
-**The idea:** "In the option select and on the home page, I want to be able to tell very
-quickly which ones I've already read (like when a link goes from blue to purple)."
-**Why / value:** _(refine)_
-**Decided (F3, 2026-06-16):**
-- **Hybrid tracking:** server-side per-account when signed in (cross-device), localStorage
-  fallback when logged out; optionally merge device history into the account on login.
-- A chapter is marked read on **open** (same event as a view — see "Chapter view counter").
-- Read/unread state shown in **both** the option select and the home feed (the blue→purple
-  metaphor).
-**Open questions:** on login, do we merge prior anonymous device reads into the account?
-visual treatment of "read" (dimmed? checkmark? color shift?) within the literary theme.
-**Sketch / notes:** account path is the same per-(viewer, chapter) record that powers
-unique view counts; keep them one mechanism, not two.
-
 ## User settings / privacy  — _status: refining_  (emerged during Q9, 2026-06-16)
 **The idea:** Not in the original splat — surfaced while refining profiles: a per-user
 **settings** surface, first need being a **"show likes" privacy toggle** that controls
@@ -356,28 +318,6 @@ or completely invisible."
 `BlacklistedTag(userId, tagId)` + a `blacklistMode` setting on the user. Filtering is a
 join against the viewer's blacklist on every chapter-listing query — coordinate with the
 feed/search/option-select queries so it's one shared helper, not bolted on per surface.
-
-## UI convention: symbols over words  — _status: refining_
-**The idea:** "Generally we should favor symbols over words for some of this ui stuff — we
-shouldn't call it 'likes', for instance, it should be just a symbol. 'Number of children
-chapters' should also be a symbol, as should views."
-**Why / value:** _(refine)_
-**Decided (Q11, 2026-06-16):**
-- **Icon source: `lucide-react`** (one consistent, MIT-licensed set; a11y-friendly).
-- **Icon + number, always**, with an `aria-label`/tooltip ("12 likes"). The symbol replaces
-  the *word*, the number stays visible (not hover-only — better on touch + screen readers).
-- Establish a small **shared icon vocabulary** once and reuse everywhere: likes (Heart),
-  views (Eye), descendants/continuations (GitFork), + glyphs for official tags.
-- **Custom tags stay text chips; official/special tags get a glyph** (from Q4).
-**Open questions:** the exact glyph per concept; do we need a tiny shared `<Stat icon=…>`
-component so the vocabulary stays consistent across choice cards, feed, profiles?
-**Sketch / notes:** cross-cutting convention, not a standalone feature — shapes "Richer
-choice cards", "Home feed enrichment", "Chapter view counter", likes UI, and profiles.
-**Status update (2026-06-19):** shipped the infra on `feat/rs-symbols-stat` — shared
-`<Stat>` + icon vocabulary (`STAT_KINDS`: likes=Heart, views=Eye, descendants=GitFork),
-migrated the like-count sites + the official-tag glyph map. Likes also gained a "picked"
-state: the Heart **fills red with a black outline** when the viewer has liked. Views/
-descendants kinds are defined but not yet consumed (await their own waves).
 
 ## Bookmark / save-for-later  — _status: raw_
 **The idea:** "Could there also be a bookmark button using the bookmark symbol? The fill
@@ -425,18 +365,6 @@ them as one thread, not three.
 **Sketch / notes:** needs likes + views + age per chapter (have likes + `ChapterView`), an
 FTS5 index (#11), and the tag join (#3). Windowed popularity = hot-score over rows within
 `[now − window, now]`.
-
-## Logout control  — _status: done (2026-06-21)_  (2026-06-21 batch)
-**The idea:** 'A "logout" button.'
-**Why / value:** **this is a gap today, not future work** — `signOut` is wired in
-`src/lib/auth.ts` but **no UI ever calls it**, so a signed-in user currently cannot log out.
-Small, standalone quick win; high priority because it's a missing basic.
-**Decided / lean:** a sign-out control in the header (and later inside the reader drawer —
-see next entry). A server action calling `signOut`; symbols-over-words → `LogOut` glyph.
-**Open questions:** header always vs. only inside a profile/drawer menu? confirm redirect
-target (home).
-**Sketch / notes:** trivial — `signOut()` server action + a button, wired into
-`site-header.tsx` where "Signed in as …" currently renders (no logout affordance there today).
 
 ## Dynamic reader header + side drawer  — _status: refining_  (2026-06-21 batch)
 **The idea:** "Changing the scroll-aware header to be more dynamic (when reading a chapter it
