@@ -1,8 +1,11 @@
 import { notFound } from 'next/navigation';
 
+import { recordViewAction } from '@/actions/view-actions';
 import { ChapterReader } from '@/components/chapters/chapter-reader';
 import { auth } from '@/lib/auth';
-import { getChapterWithChoices, hasUserLikedChapter } from '@/lib/chapters';
+import { getChapterWithChoices, getDescendantCounts, hasUserLikedChapter } from '@/lib/chapters';
+import { getChapterTags, getChaptersTags } from '@/lib/tags';
+import { getReadChapterIds } from '@/lib/views';
 
 export default async function ChapterPage({
   params
@@ -18,23 +21,63 @@ export default async function ChapterPage({
 
   const session = await auth();
   const userId = session?.user?.id;
+  const isAdmin = Boolean(session?.user?.isAdmin);
   const viewerHasLiked = userId ? await hasUserLikedChapter(chapter.id, userId) : false;
+  const tags = await getChapterTags(chapter.id);
+
+  // Record-on-open: idempotent, so a refresh never inflates the count.
+  const { counted } = await recordViewAction(chapter.id, chapter.authorId);
+  const viewCount = chapter.viewCount + (counted ? 1 : 0);
+
+  const realizedChildIds = chapter.optionsFromHere
+    .map((option) => option.childChapter?.id)
+    .filter((id): id is string => Boolean(id));
+  const readChoiceIds = userId ? await getReadChapterIds(userId, realizedChildIds) : new Set<string>();
+  const descendantCounts = await getDescendantCounts(realizedChildIds);
+  const choiceTags = await getChaptersTags(realizedChildIds);
+
+  const canAddTags = Boolean(
+    userId && (chapter.story.tagPermission === 'crowd' || chapter.authorId === userId)
+  );
+  const canRemoveTags = Boolean(userId && (chapter.authorId === userId || isAdmin));
+  const isAuthor = Boolean(userId && chapter.authorId === userId);
 
   return (
     <ChapterReader
       storyId={storyId}
       chapterId={chapter.id}
+      parentChapterId={chapter.parentChapterId}
       title={chapter.title}
       content={chapter.content}
       storyTitle={chapter.story.title}
-      choices={chapter.childChapters.map((choice) => ({
-        id: choice.id,
-        title: choice.title,
-        likeCount: choice._count.likes
-      }))}
+      author={chapter.author}
+      choices={chapter.optionsFromHere.map((option) =>
+        option.childChapter
+          ? {
+              kind: 'realized' as const,
+              optionId: option.id,
+              childId: option.childChapter.id,
+              label: option.label,
+              likeCount: option.childChapter._count.likes,
+              viewCount: option.childChapter.viewCount,
+              descendantCount: descendantCounts.get(option.childChapter.id) ?? 0,
+              read: readChoiceIds.has(option.childChapter.id),
+              tags: choiceTags.get(option.childChapter.id) ?? []
+            }
+          : {
+              kind: 'prompt' as const,
+              optionId: option.id,
+              label: option.label
+            }
+      )}
       likeCount={chapter._count.likes}
+      viewCount={viewCount}
       viewerHasLiked={viewerHasLiked}
-      isSignedIn={Boolean(userId)}
+      userId={userId ?? null}
+      tags={tags}
+      canAddTags={canAddTags}
+      canRemoveTags={canRemoveTags}
+      isAuthor={isAuthor}
     />
   );
 }

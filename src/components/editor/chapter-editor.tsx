@@ -100,9 +100,6 @@ export function ChapterEditor() {
         <EditorContent editor={editor} />
       </div>
       <input type="hidden" name="content" value={markdown} />
-      <p id="content-help" className={styles.help}>
-        Select text and use Bold/Italic (or &#8984;/Ctrl+B, &#8984;/Ctrl+I).
-      </p>
       {showMarkdown ? (
         <pre aria-label="Markdown source" className={styles.markdownView}>
           {markdown}

@@ -71,12 +71,6 @@
   font-style: italic;
 }
 
-.help {
-  font-family: var(--font-sans);
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
 .markdownView {
   margin-top: var(--space-2);
   white-space: pre-wrap;

@@ -13,6 +13,27 @@
   color: var(--text-muted);
 }
 
+.backLink {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+@media (hover: hover) {
+  .backLink:hover {
+    color: var(--accent);
+  }
+}
+
+.byline {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .body {
   font-size: var(--step-1);
 }
@@ -32,7 +53,17 @@
   border: 1px solid var(--border);
 }
 
+.report {
+  margin-top: var(--space-2);
+}
+
 .likeCount {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.viewCount {
   font-family: var(--font-sans);
   font-size: 0.9rem;
   color: var(--text-muted);
@@ -62,11 +93,38 @@
   gap: var(--space-3);
 }
 
+.choiceGroups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 .choiceList {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   list-style: none;
+}
+
+/* Boundary between the written paths (above) and the write-a-new-chapter
+   affordances — suggestions + "create your own" (below). A hairline rule on
+   each side of a small muted caption. */
+.choiceDivider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-1) 0;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.choiceDivider::before,
+.choiceDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 .choiceCard {
@@ -84,10 +142,50 @@
   cursor: pointer;
 }
 
-.choiceCard:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
-  border-color: var(--accent);
+.choiceBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+/* Hover effects only where there's a real pointer. On touch (iOS Safari) `:hover`
+   "sticks" to the tapped card, so the option you just chose keeps looking lifted
+   and highlighted until you tap elsewhere. */
+@media (hover: hover) {
+  .choiceCard:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+    border-color: var(--accent);
+  }
+}
+
+/* Read choices fade back like a visited link. Keyboard focus brightens them so
+   they're legible when reached for; pointer hover does too, but only on real
+   pointers — a sticky touch `:hover` would otherwise leave the option you just
+   tapped un-dimmed (looking selected) until you tap away. */
+.read {
+  opacity: 0.55;
+}
+
+.read:has(:focus-visible) {
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .read:hover {
+    opacity: 1;
+  }
+}
+
+.prompt {
+  background: var(--surface-muted, #f0f0f0);
+  border-style: dashed;
+}
+
+.prompt .choiceTitle {
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .choiceTitle {
@@ -97,8 +195,10 @@
   color: var(--text);
 }
 
-.choiceTitle:hover {
-  color: var(--accent);
+@media (hover: hover) {
+  .choiceTitle:hover {
+    color: var(--accent);
+  }
 }
 
 .choiceTitle::after {
@@ -107,19 +207,92 @@
   inset: 0;
 }
 
-.choiceLikes {
+.choiceTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.choiceTagChip {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--surface-muted, #f0f0f0);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.choiceTagOverflow {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.choiceStats {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-sans);
   font-size: 0.85rem;
   color: var(--text-muted);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.empty {
+/* The trailing "create your own option…" card. Shares the muted/dashed prompt
+   look, but its title takes the accent so it reads as the do-something action
+   rather than one of the author's suggestions. */
+.createOption .choiceTitle {
+  color: var(--accent);
+}
+
+.promptManageList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.promptManageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
-.addChapter {
-  align-self: flex-start;
+.promptDelete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 var(--space-2);
+}
+
+@media (hover: hover) {
+  .promptDelete:hover {
+    color: var(--danger);
+  }
+}
+
+.addPromptForm {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.addPromptLabel input {
+  width: 100%;
 }

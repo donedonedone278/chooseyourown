@@ -5,6 +5,7 @@ test('a signed-in reader can like a chapter and report it', async ({ page }) => 
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Riley');
+  await page.getByLabel('Handle').fill(`riley-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`riley-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -18,9 +19,9 @@ test('a signed-in reader can like a chapter and report it', async ({ page }) => 
   await expect(page.getByRole('heading', { name: `Chapter ${stamp}` })).toBeVisible();
 
   // Like → count goes 0 → 1 and the button reads "Liked".
-  await expect(page.locator('main').getByText('Liked by 0 readers')).toBeVisible();
-  await page.locator('main').getByRole('button', { name: 'Like' }).click();
-  await expect(page.locator('main').getByText('Liked by 1 reader')).toBeVisible();
+  await expect(page.locator('main').getByLabel('0 likes')).toBeVisible();
+  await page.locator('main').getByRole('button', { name: 'Like', exact: true }).click();
+  await expect(page.locator('main').getByLabel('1 like')).toBeVisible();
   await expect(page.locator('main').getByRole('button', { name: 'Liked' })).toBeDisabled();
 
   // Report → confirmation message.

@@ -1,15 +1,15 @@
 import Link from 'next/link';
 
+import { FeedList, type FeedItem } from '@/components/feed/feed-list';
 import styles from './recent-chapter-feed.module.css';
 
-type FeedItem = {
-  id: string;
-  title: string;
-  storyId: string;
-  story: { title: string };
-};
-
-export function RecentChapterFeed({ chapters }: { chapters: FeedItem[] }) {
+export function RecentChapterFeed({
+  chapters,
+  userId
+}: {
+  chapters: FeedItem[];
+  userId?: string | null;
+}) {
   return (
     <main>
       <h1>Recent chapters</h1>
@@ -21,21 +21,7 @@ export function RecentChapterFeed({ chapters }: { chapters: FeedItem[] }) {
       {chapters.length === 0 ? (
         <p className={styles.empty}>No chapters yet.</p>
       ) : (
-        <ul className={styles.list}>
-          {chapters.map((chapter) => (
-            <li key={chapter.id} className={styles.card}>
-              <Link
-                href={`/stories/${chapter.storyId}/chapters/${chapter.id}`}
-                className={styles.cardTitle}
-              >
-                {chapter.title}
-              </Link>
-              <span className={styles.from}>
-                from <Link href={`/stories/${chapter.storyId}`}>{chapter.story.title}</Link>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <FeedList chapters={chapters} userId={userId} />
       )}
     </main>
   );

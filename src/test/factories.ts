@@ -8,6 +8,7 @@ function uniqueSuffix() {
 
 export async function createUser(overrides: {
   email?: string;
+  username?: string;
   displayName?: string;
   passwordHash?: string;
   isAdmin?: boolean;
@@ -17,6 +18,7 @@ export async function createUser(overrides: {
   return db.user.create({
     data: {
       email: overrides.email ?? `user-${suffix}@example.com`,
+      username: overrides.username ?? `user-${suffix}`,
       displayName: overrides.displayName ?? `User ${suffix}`,
       passwordHash: overrides.passwordHash ?? 'hashed-password',
       isAdmin: overrides.isAdmin ?? false
@@ -28,13 +30,21 @@ export async function createStory(overrides: {
   title?: string;
   authorId: string;
   rootChapterId?: string | null;
-}): Promise<{ id: string; title: string; authorId: string; rootChapterId: string | null }> {
+  tagPermission?: string;
+}): Promise<{
+  id: string;
+  title: string;
+  authorId: string;
+  rootChapterId: string | null;
+  tagPermission: string;
+}> {
   await db.user.upsert({
     where: { id: overrides.authorId },
     update: {},
     create: {
       id: overrides.authorId,
       email: `${overrides.authorId}@example.com`,
+      username: `${overrides.authorId}-${uniqueSuffix()}`,
       displayName: overrides.authorId,
       passwordHash: 'hashed-password'
     }
@@ -44,7 +54,8 @@ export async function createStory(overrides: {
     data: {
       title: overrides.title ?? `Story ${uniqueSuffix()}`,
       authorId: overrides.authorId,
-      rootChapterId: overrides.rootChapterId ?? null
+      rootChapterId: overrides.rootChapterId ?? null,
+      tagPermission: overrides.tagPermission ?? 'crowd'
     }
   });
 }
@@ -55,6 +66,7 @@ export async function createChapter(overrides: {
   title?: string;
   content?: string;
   parentChapterId?: string | null;
+  label?: string;
 }) {
   await db.user.upsert({
     where: { id: overrides.authorId },
@@ -62,18 +74,82 @@ export async function createChapter(overrides: {
     create: {
       id: overrides.authorId,
       email: `${overrides.authorId}@example.com`,
+      username: `${overrides.authorId}-${uniqueSuffix()}`,
       displayName: overrides.authorId,
       passwordHash: 'hashed-password'
     }
   });
 
-  return db.chapter.create({
+  const title = overrides.title ?? `Chapter ${uniqueSuffix()}`;
+
+  const chapter = await db.chapter.create({
     data: {
       storyId: overrides.storyId,
       authorId: overrides.authorId,
-      title: overrides.title ?? `Chapter ${uniqueSuffix()}`,
+      title,
       content: overrides.content ?? 'Test content.',
       parentChapterId: overrides.parentChapterId ?? null
+    }
+  });
+
+  // Keep the "every non-root chapter has exactly one realized incoming
+  // option" invariant true for factory-built trees too, so existing tests
+  // that build a tree via createChapter still render choices in the reader.
+  if (overrides.parentChapterId) {
+    await db.chapterOption.create({
+      data: {
+        parentChapterId: overrides.parentChapterId,
+        childChapterId: chapter.id,
+        label: overrides.label ?? title,
+        createdByUserId: overrides.authorId
+      }
+    });
+  }
+
+  return chapter;
+}
+
+export async function createChapterOption(overrides: {
+  parentChapterId: string;
+  childChapterId?: string | null;
+  label?: string;
+  createdByUserId: string;
+}) {
+  return db.chapterOption.create({
+    data: {
+      parentChapterId: overrides.parentChapterId,
+      childChapterId: overrides.childChapterId ?? null,
+      label: overrides.label ?? `Choice ${uniqueSuffix()}`,
+      createdByUserId: overrides.createdByUserId
+    }
+  });
+}
+
+export async function createTag(overrides: {
+  name?: string;
+  isOfficial?: boolean;
+  icon?: string | null;
+} = {}) {
+  const name = overrides.name ?? `tag-${uniqueSuffix()}`;
+  return db.tag.create({
+    data: {
+      name,
+      isOfficial: overrides.isOfficial ?? false,
+      icon: overrides.icon ?? null
+    }
+  });
+}
+
+export async function createView(overrides: {
+  chapterId: string;
+  viewerKey?: string;
+  userId?: string | null;
+}) {
+  return db.chapterView.create({
+    data: {
+      chapterId: overrides.chapterId,
+      viewerKey: overrides.viewerKey ?? `device:${uniqueSuffix()}`,
+      userId: overrides.userId ?? null
     }
   });
 }

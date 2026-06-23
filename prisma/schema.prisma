@@ -8,15 +8,22 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  displayName  String
-  passwordHash String
-  isAdmin      Boolean       @default(false)
-  stories      Story[]
-  chapters     Chapter[]
-  likes        ChapterLike[]
-  reports      ChapterReport[]
+  id               String        @id @default(cuid())
+  email            String        @unique
+  username         String        @unique
+  displayName      String
+  passwordHash     String
+  isAdmin          Boolean       @default(false)
+  profileViewCount Int           @default(0)
+  stories          Story[]
+  chapters         Chapter[]
+  likes            ChapterLike[]
+  reports          ChapterReport[]
+  tagsAdded        ChapterTag[]
+  views            ChapterView[]
+  profileViews     ProfileView[] @relation("ProfileViews")
+  profileViewsMade ProfileView[] @relation("ProfileViewsMade")
+  optionsCreated   ChapterOption[]
 }
 
 model Story {
@@ -28,6 +35,7 @@ model Story {
   author        User      @relation(fields: [authorId], references: [id])
   chapters      Chapter[]
   rootChapterId String?   @unique
+  tagPermission String    @default("crowd")
 }
 
 model Chapter {
@@ -39,12 +47,30 @@ model Chapter {
   content         String
   createdAt       DateTime      @default(now())
   deletedAt       DateTime?
+  viewCount       Int           @default(0)
   story           Story         @relation(fields: [storyId], references: [id])
   parentChapter   Chapter?      @relation("ChapterChildren", fields: [parentChapterId], references: [id])
   childChapters   Chapter[]     @relation("ChapterChildren")
   author          User          @relation(fields: [authorId], references: [id])
   likes           ChapterLike[]
   reports         ChapterReport[]
+  tags            ChapterTag[]
+  views           ChapterView[]
+  optionsFromHere ChapterOption[] @relation("ChapterOptionsFromParent")
+  incomingOption  ChapterOption?  @relation("ChapterOptionToChild")
+}
+
+model ChapterOption {
+  id              String   @id @default(cuid())
+  parentChapterId String
+  childChapterId  String?  @unique
+  label           String
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  parentChapter Chapter  @relation("ChapterOptionsFromParent", fields: [parentChapterId], references: [id])
+  childChapter  Chapter? @relation("ChapterOptionToChild", fields: [childChapterId], references: [id])
+  createdBy     User     @relation(fields: [createdByUserId], references: [id])
 }
 
 model ChapterLike {
@@ -70,4 +96,50 @@ model ChapterReport {
 
   chapter Chapter @relation(fields: [chapterId], references: [id])
   user    User    @relation(fields: [userId], references: [id])
+}
+
+model Tag {
+  id         String       @id @default(cuid())
+  name       String       @unique
+  isOfficial Boolean      @default(false)
+  icon       String?
+  createdAt  DateTime     @default(now())
+  chapters   ChapterTag[]
+}
+
+model ChapterTag {
+  id            String   @id @default(cuid())
+  chapterId     String
+  tagId         String
+  addedByUserId String
+  createdAt     DateTime @default(now())
+  chapter       Chapter  @relation(fields: [chapterId], references: [id])
+  tag           Tag      @relation(fields: [tagId], references: [id])
+  addedBy       User     @relation(fields: [addedByUserId], references: [id])
+
+  @@unique([chapterId, tagId])
+}
+
+model ChapterView {
+  id        String   @id @default(cuid())
+  chapterId String
+  viewerKey String
+  userId    String?
+  createdAt DateTime @default(now())
+  chapter   Chapter  @relation(fields: [chapterId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@unique([chapterId, viewerKey])
+}
+
+model ProfileView {
+  id            String   @id @default(cuid())
+  profileUserId String
+  viewerKey     String
+  userId        String?
+  createdAt     DateTime @default(now())
+  profile       User     @relation("ProfileViews", fields: [profileUserId], references: [id])
+  viewer        User?    @relation("ProfileViewsMade", fields: [userId], references: [id])
+
+  @@unique([profileUserId, viewerKey])
 }

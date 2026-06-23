@@ -8,6 +8,7 @@ test('story cover page shows stats and links to the root chapter', async ({ page
   // Sign up (writing is auth-gated).
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Nora');
+  await page.getByLabel('Handle').fill(`nora-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(`nora-${stamp}@example.com`);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();

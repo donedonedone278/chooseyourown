@@ -36,4 +36,8 @@ elif [ -z "$proxy_target" ]; then
   echo
 fi
 
-exec ./node_modules/.bin/next dev --hostname 0.0.0.0 --port "$PORT"
+# Tee the server's stdout+stderr to next-dev.log (gitignored, repo root) so
+# server-side errors are always grep-able without restarting — a request that
+# 500s prints its stack there. Fresh file each start; tee still forwards output
+# to stdout so the banner/background capture keep working.
+exec ./node_modules/.bin/next dev --hostname 0.0.0.0 --port "$PORT" > >(tee next-dev.log) 2>&1

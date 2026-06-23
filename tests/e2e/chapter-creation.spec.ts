@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
 
 test('signed-in user starts a story and adds a child chapter', async ({ page }) => {
-  const email = `clocktower-${Date.now()}@example.com`;
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const email = `clocktower-${stamp}@example.com`;
 
   // Writing is auth-gated, so create an account first.
   await page.goto('/auth/sign-up');
   await page.getByLabel('Display name').fill('Quinn');
+  await page.getByLabel('Handle').fill(`quinn-${Math.random().toString(36).slice(2, 8)}`);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -34,7 +36,8 @@ test('signed-in user starts a story and adds a child chapter', async ({ page }) 
   await expect(page.locator('main').locator('strong')).toHaveText('The bell rings at midnight.');
 
   // Add a child chapter under it.
-  await page.locator('main').getByRole('link', { name: 'Add a chapter' }).click();
+  await page.locator('main').getByRole('link', { name: 'Create your own option' }).click();
+  await page.getByLabel('Choice label').fill('Climb the stairs');
   await page.getByLabel('Chapter title').fill('Climb the stairs');
 
   const childEditor = page.getByLabel('Chapter content');
@@ -47,14 +50,8 @@ test('signed-in user starts a story and adds a child chapter', async ({ page }) 
 
   await page.getByRole('button', { name: 'Publish chapter' }).click();
 
-  // Back on the parent reader, the new chapter shows up as a choice.
-  await expect(page.getByRole('heading', { name: 'The bell rings' })).toBeVisible();
-  await expect(
-    page.locator('main').getByRole('link', { name: 'Climb the stairs' })
-  ).toBeVisible();
-
-  // The child chapter's content rendered with italics, as applied via the toolbar.
-  await page.locator('main').getByRole('link', { name: 'Climb the stairs' }).click();
+  // The author lands directly on the chapter they just wrote, not the parent.
   await expect(page.getByRole('heading', { name: 'Climb the stairs' })).toBeVisible();
+  // The child chapter's content rendered with italics, as applied via the toolbar.
   await expect(page.locator('main').locator('em')).toHaveText('You climb the creaking stairs.');
 });
